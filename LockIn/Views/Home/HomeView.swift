@@ -1,177 +1,133 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject var authService: AuthService
     @EnvironmentObject var shieldManager: ShieldManager
-    @State private var showQuickLock = false
+    @EnvironmentObject var pactService: PactService
+    @EnvironmentObject var unlockRequestService: UnlockRequestService
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Status card
-                    statusCard
+                VStack(spacing: 20) {
+                    greetingSection
+                    statusSection
 
-                    // Quick lock buttons
-                    quickLockSection
-
-                    // Active sessions
-                    if shieldManager.isLockActive {
-                        activeSessionCard
+                    if !unlockRequestService.pendingRequests.isEmpty {
+                        pendingRequestsBanner
                     }
 
-                    // Saved profiles
-                    savedProfilesSection
+                    pactsSection
+
+                    if pactService.myPacts.isEmpty {
+                        noPactsCTA
+                    }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 40)
             }
             .navigationTitle("LockIn")
-            .lockInGradientBackground()
+            .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 
-    // MARK: - Status Card
-    private var statusCard: some View {
+    // MARK: - Greeting
+    private var greetingSection: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Hey, \(authService.currentUser?.displayName ?? "there") 👋")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.lockInText)
+
+                Text(shieldManager.isLockActive ? "You're locked in. Stay hard." : "Ready to lock in?")
+                    .font(.system(size: 15))
+                    .foregroundColor(.lockInTextSecondary)
+            }
+            Spacer()
+            Text(authService.currentUser?.avatarEmoji ?? "🔥")
+                .font(.system(size: 36))
+        }
+    }
+
+    // MARK: - Status
+    private var statusSection: some View {
         VStack(spacing: 16) {
             TimerRing(
-                progress: shieldManager.isLockActive ? 0.65 : 0,
-                timeRemaining: shieldManager.isLockActive ? "23:45" : "00:00",
+                progress: shieldManager.isLockActive ? 0.7 : 0,
+                timeRemaining: shieldManager.isLockActive ? "active" : "00:00",
                 isActive: shieldManager.isLockActive
             )
 
-            Text(shieldManager.isLockActive ? "You're locked in. Stay focused." : "Ready to lock in?")
-                .font(.system(size: 16))
-                .foregroundColor(.lockInTextSecondary)
-        }
-        .lockInCard()
-    }
-
-    // MARK: - Quick Lock
-    private var quickLockSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("QUICK LOCK")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.lockInTextSecondary)
-                .tracking(1.5)
-
-            HStack(spacing: 12) {
-                QuickLockButton(minutes: 15, icon: "15.circle.fill") {
-                    shieldManager.quickLock(minutes: 15)
+            if shieldManager.isLockActive {
+                LockInButton("Request Unlock", icon: "lock.open.fill", style: .ghost) {
+                    // navigate to unlock request flow
                 }
-                QuickLockButton(minutes: 30, icon: "30.circle.fill") {
-                    shieldManager.quickLock(minutes: 30)
-                }
-                QuickLockButton(minutes: 60, icon: "60.circle.fill") {
-                    shieldManager.quickLock(minutes: 60)
-                }
-                QuickLockButton(minutes: 120, icon: "clock.fill") {
-                    shieldManager.quickLock(minutes: 120)
-                }
-            }
-        }
-    }
 
-    // MARK: - Active Session
-    private var activeSessionCard: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Image(systemName: "lock.fill")
-                    .foregroundColor(.lockInSuccess)
-                Text("Active Session")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.lockInText)
-                Spacer()
-            }
-
-            HStack {
-                AppIconGrid(
-                    appTokens: shieldManager.selectedApps.applicationTokens,
-                    maxDisplay: 8
-                )
-            }
-
-            LockInButton("End Session", icon: "lock.open.fill", style: .danger) {
-                shieldManager.deactivateShield()
-            }
-        }
-        .lockInCard()
-    }
-
-    // MARK: - Saved Profiles
-    private var savedProfilesSection: some View {
-        let profiles = SharedDefaults.shared.getLockProfiles()
-
-        return VStack(alignment: .leading, spacing: 12) {
-            if !profiles.isEmpty {
-                Text("SAVED PROFILES")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.lockInTextSecondary)
-                    .tracking(1.5)
-
-                ForEach(profiles) { profile in
-                    ProfileRow(profile: profile) {
-                        shieldManager.activateProfile(profile)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Quick Lock Button
-private struct QuickLockButton: View {
-    let minutes: Int
-    let icon: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 24))
-                    .foregroundColor(.lockInPrimary)
-
-                Text("\(minutes)m")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.lockInText)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(Color.lockInSurface)
-            .cornerRadius(14)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Profile Row
-private struct ProfileRow: View {
-    let profile: LockProfile
-    let onActivate: () -> Void
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profile.name)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.lockInText)
-
-                Text("\(profile.applicationTokens.count) apps · \(profile.durationMinutes) min")
+                Text("\(shieldManager.selectedApps.applicationTokens.count) apps locked")
                     .font(.system(size: 13))
                     .foregroundColor(.lockInTextSecondary)
             }
+        }
+        .lockInCard()
+    }
 
-            Spacer()
+    // MARK: - Pending Requests
+    private var pendingRequestsBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bell.badge.fill")
+                .foregroundColor(.lockInPrimary)
+                .font(.system(size: 20))
 
-            Button(action: onActivate) {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(.lockInPrimary)
-                    .padding(12)
-                    .background(Color.lockInPrimary.opacity(0.15))
-                    .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(unlockRequestService.pendingRequests.count) unlock requests")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.lockInText)
+                Text("Your pact members need you")
+                    .font(.system(size: 13))
+                    .foregroundColor(.lockInTextSecondary)
             }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(.lockInTextSecondary)
+        }
+        .lockInCard()
+    }
+
+    // MARK: - Pacts
+    private var pactsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !pactService.myPacts.isEmpty {
+                Text("YOUR PACTS")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.lockInTextSecondary)
+                    .tracking(1.5)
+
+                ForEach(pactService.myPacts) { pact in
+                    PactCard(pact: pact, members: pactService.currentPactMembers) {}
+                }
+            }
+        }
+    }
+
+    // MARK: - No Pacts CTA
+    private var noPactsCTA: some View {
+        VStack(spacing: 16) {
+            Text("👥")
+                .font(.system(size: 48))
+
+            Text("Find your accountability partner")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.lockInText)
+                .multilineTextAlignment(.center)
+
+            Text("Create a pact with your co-founder or friend.\nHold each other accountable.")
+                .font(.system(size: 14))
+                .foregroundColor(.lockInTextSecondary)
+                .multilineTextAlignment(.center)
+
+            LockInButton("Create a Pact", icon: "plus") {}
         }
         .lockInCard()
     }

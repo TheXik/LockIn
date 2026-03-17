@@ -5,12 +5,28 @@ options:
     iOS: "16.0"
   xcodeVersion: "15.0"
 
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: "2.0.0"
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     TARGETED_DEVICE_FAMILY: "1"  # iPhone only
     DEVELOPMENT_TEAM: ""  # Fill in with your Apple Developer Team ID
+
+schemes:
+  LockIn:
+    build:
+      targets:
+        LockIn: all
+    run:
+      config: Debug
+      executable: LockIn
+    archive:
+      config: Release
 
 targets:
 
@@ -39,6 +55,7 @@ targets:
       - target: ShieldConfigurationExtension
       - target: ShieldActionExtension
       - target: DeviceActivityMonitorExtension
+      - package: Supabase
 
   # ─── Shield Configuration Extension ────────────────────
   ShieldConfigurationExtension:
@@ -51,7 +68,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.shield-configuration
+        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.ShieldConfiguration
         INFOPLIST_FILE: ShieldConfiguration/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldConfiguration/ShieldConfiguration.entitlements
     entitlements:
@@ -72,7 +89,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.shield-action
+        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.ShieldAction
         INFOPLIST_FILE: ShieldAction/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldAction/ShieldAction.entitlements
     entitlements:
@@ -93,7 +110,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.device-activity-monitor
+        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.DeviceActivityMonitor
         INFOPLIST_FILE: DeviceActivityMonitor/Info.plist
         CODE_SIGN_ENTITLEMENTS: DeviceActivityMonitor/DeviceActivityMonitor.entitlements
     entitlements:

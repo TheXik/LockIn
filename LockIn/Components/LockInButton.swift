@@ -3,20 +3,20 @@ import SwiftUI
 struct LockInButton: View {
     let title: String
     let icon: String?
-    let style: ButtonStyle
+    let style: ButtonVariant
     let action: () -> Void
 
-    enum ButtonStyle {
-        case primary
-        case secondary
-        case danger
-        case ghost
+    enum ButtonVariant {
+        case primary    // Yellow bg, black text
+        case secondary  // Dark surface bg, white text
+        case danger     // Red bg, white text
+        case ghost      // Transparent, yellow border
     }
 
     init(
         _ title: String,
         icon: String? = nil,
-        style: ButtonStyle = .primary,
+        style: ButtonVariant = .primary,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -33,16 +33,16 @@ struct LockInButton: View {
                         .font(.system(size: 18, weight: .semibold))
                 }
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .bold))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(backgroundColor)
             .foregroundColor(foregroundColor)
-            .cornerRadius(16)
+            .cornerRadius(14)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(borderColor, lineWidth: style == .ghost ? 1.5 : 0)
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(borderColor, lineWidth: style == .ghost ? 2 : 0)
             )
         }
         .buttonStyle(.plain)
@@ -59,7 +59,7 @@ struct LockInButton: View {
 
     private var foregroundColor: Color {
         switch style {
-        case .primary: return .white
+        case .primary: return .black  // Black text on yellow
         case .secondary: return .lockInText
         case .danger: return .white
         case .ghost: return .lockInPrimary
@@ -67,17 +67,6 @@ struct LockInButton: View {
     }
 
     private var borderColor: Color {
-        style == .ghost ? .lockInPrimary.opacity(0.5) : .clear
+        style == .ghost ? .lockInPrimary.opacity(0.6) : .clear
     }
-}
-
-#Preview {
-    VStack(spacing: 16) {
-        LockInButton("Lock In", icon: "lock.fill") {}
-        LockInButton("Settings", icon: "gearshape", style: .secondary) {}
-        LockInButton("Unlock", icon: "lock.open.fill", style: .danger) {}
-        LockInButton("Cancel", style: .ghost) {}
-    }
-    .padding()
-    .lockInGradientBackground()
 }

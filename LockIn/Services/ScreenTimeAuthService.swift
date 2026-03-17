@@ -6,7 +6,7 @@ import FamilyControls
 final class ScreenTimeAuthService: ObservableObject {
     @Published var authorizationStatus: AuthorizationStatus = .notDetermined
 
-    enum AuthorizationStatus {
+    enum AuthorizationStatus: Equatable {
         case notDetermined
         case approved
         case denied

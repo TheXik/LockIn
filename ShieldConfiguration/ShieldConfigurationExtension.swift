@@ -2,14 +2,14 @@ import ManagedSettingsUI
 import ManagedSettings
 import UIKit
 
-/// Customizes the shield overlay shown when a blocked app is opened.
+/// Customizes the shield overlay — black/yellow to match LockIn brand.
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
     override func configuration(shielding application: Application) -> ShieldConfiguration {
         makeConfig(
             title: "This app is locked 🔒",
-            subtitle: "Stay focused. You've got this.",
-            primaryButton: "I Need This App",
+            subtitle: "Open LockIn to request unlock from your pact.",
+            primaryButton: "Request Unlock",
             secondaryButton: "Stay Locked In"
         )
     }
@@ -18,8 +18,8 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
                                 in category: ActivityCategory) -> ShieldConfiguration {
         makeConfig(
             title: "This category is locked 🔒",
-            subtitle: "Focus time. Come back later.",
-            primaryButton: "Open Anyway",
+            subtitle: "Your accountability partner has your back.",
+            primaryButton: "Request Unlock",
             secondaryButton: "Stay Locked In"
         )
     }
@@ -27,8 +27,8 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration {
         makeConfig(
             title: "This site is locked 🔒",
-            subtitle: "Block the scroll. Lock in.",
-            primaryButton: "I Need This Site",
+            subtitle: "Open LockIn to request unlock from your pact.",
+            primaryButton: "Request Unlock",
             secondaryButton: "Stay Locked In"
         )
     }
@@ -37,13 +37,11 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
                                 in category: ActivityCategory) -> ShieldConfiguration {
         makeConfig(
             title: "This category is locked 🔒",
-            subtitle: "Focus time. Come back later.",
-            primaryButton: "Open Anyway",
+            subtitle: "Your accountability partner has your back.",
+            primaryButton: "Request Unlock",
             secondaryButton: "Stay Locked In"
         )
     }
-
-    // MARK: - Helpers
 
     private func makeConfig(
         title: String,
@@ -51,15 +49,15 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         primaryButton: String,
         secondaryButton: String
     ) -> ShieldConfiguration {
-        let purple = UIColor(red: 108/255, green: 92/255, blue: 231/255, alpha: 1)  // #6C5CE7
-        let darkBg = UIColor(red: 15/255, green: 15/255, blue: 26/255, alpha: 1)    // #0F0F1A
+        let yellow = UIColor(red: 255/255, green: 214/255, blue: 10/255, alpha: 1)  // #FFD60A
+        let black = UIColor(red: 0, green: 0, blue: 0, alpha: 1)
 
         return ShieldConfiguration(
-            backgroundColor: darkBg,
+            backgroundColor: black,
             title: ShieldConfiguration.Label(text: title, color: .white),
             subtitle: ShieldConfiguration.Label(text: subtitle, color: .lightGray),
-            primaryButtonLabel: ShieldConfiguration.Label(text: primaryButton, color: .white),
-            primaryButtonBackgroundColor: purple,
+            primaryButtonLabel: ShieldConfiguration.Label(text: primaryButton, color: black),
+            primaryButtonBackgroundColor: yellow,
             secondaryButtonLabel: ShieldConfiguration.Label(text: secondaryButton, color: .lightGray)
         )
     }

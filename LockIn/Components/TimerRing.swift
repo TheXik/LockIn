@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Circular countdown timer with animated ring.
+/// Circular countdown ring — clean, minimal.
 struct TimerRing: View {
     let progress: Double       // 0.0 to 1.0
     let timeRemaining: String  // "23:45"
@@ -12,61 +12,42 @@ struct TimerRing: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.lockInSurface, lineWidth: 12)
-                .frame(width: 220, height: 220)
+                .stroke(Color.lockInSurfaceLight, lineWidth: 8)
+                .frame(width: 200, height: 200)
 
             // Progress ring
             Circle()
                 .trim(from: 0, to: progress)
                 .stroke(
-                    AngularGradient(
-                        colors: [.lockInPrimary, .lockInAccent, .lockInPrimary],
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    Color.lockInPrimary,
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
                 )
-                .frame(width: 220, height: 220)
+                .frame(width: 200, height: 200)
                 .rotationEffect(.degrees(-90))
                 .animation(.easeInOut(duration: 0.5), value: progress)
 
-            // Glow effect on the ring
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(Color.lockInPrimary.opacity(0.4), lineWidth: 20)
-                .blur(radius: 8)
-                .frame(width: 220, height: 220)
-                .rotationEffect(.degrees(-90))
-
             // Center content
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: isActive ? "lock.fill" : "lock.open.fill")
-                    .font(.system(size: 28))
+                    .font(.system(size: 24))
                     .foregroundColor(isActive ? .lockInPrimary : .lockInTextSecondary)
                     .scaleEffect(pulseScale)
 
                 Text(timeRemaining)
-                    .font(.system(size: 42, weight: .bold, design: .monospaced))
+                    .font(.system(size: 40, weight: .bold, design: .monospaced))
                     .foregroundColor(.lockInText)
 
                 Text(isActive ? "LOCKED IN" : "READY")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.lockInTextSecondary)
-                    .tracking(2)
+                    .tracking(3)
             }
         }
         .onAppear {
             guard isActive else { return }
             withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                pulseScale = 1.15
+                pulseScale = 1.1
             }
         }
     }
-}
-
-#Preview {
-    VStack(spacing: 40) {
-        TimerRing(progress: 0.65, timeRemaining: "23:45", isActive: true)
-        TimerRing(progress: 0, timeRemaining: "00:00", isActive: false)
-    }
-    .lockInGradientBackground()
 }

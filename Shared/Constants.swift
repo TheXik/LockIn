@@ -2,15 +2,10 @@ import Foundation
 
 enum AppConstants {
     static let appGroupIdentifier = "group.com.lockin.app"
-    static let guardianPinKey = "guardianPin"
-    static let lockedAppsKey = "lockedApps"
-    static let lockProfilesKey = "lockProfiles"
-    static let isGuardianModeKey = "isGuardianMode"
     static let hasCompletedOnboardingKey = "hasCompletedOnboarding"
-    static let userModeKey = "userMode"
+    static let lockProfilesKey = "lockProfiles"
 
-    enum UserMode: String, Codable {
-        case selfLock     // user locks themselves
-        case guardian     // guardian locks the device
-    }
+    // Supabase — fill these in from your Supabase project dashboard
+    static let supabaseURL = "YOUR_SUPABASE_URL"       // e.g. https://abc123.supabase.co
+    static let supabaseAnonKey = "YOUR_SUPABASE_ANON_KEY"
 }

@@ -52,6 +52,9 @@ struct MainTabView: View {
             await pactService.fetchMyPacts(userId: userId)
             await unlockRequestService.fetchPendingRequests(userId: userId)
             await unlockRequestService.listenForNewRequests(userId: userId)
+
+            // Check if user came from shield "Open LockIn" button
+            checkShieldDeepLink()
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToRequestsTab)) { _ in
             selectedTab = 3
@@ -61,6 +64,22 @@ struct MainTabView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .switchToLockTab)) { _ in
             selectedTab = 2
+        }
+    }
+
+    /// Check App Group for shield deep-link flag (set by ShieldActionExtension).
+    private func checkShieldDeepLink() {
+        guard let defaults = UserDefaults(suiteName: AppConstants.appGroupIdentifier) else { return }
+        let pending = defaults.bool(forKey: "lockin.pendingUnlockFromShield")
+        guard pending else { return }
+
+        // Clear the flag
+        defaults.set(false, forKey: "lockin.pendingUnlockFromShield")
+        defaults.removeObject(forKey: "lockin.shieldTapTimestamp")
+
+        // Navigate to Requests tab
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            selectedTab = 3
         }
     }
 }

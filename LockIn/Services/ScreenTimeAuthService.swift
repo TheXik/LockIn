@@ -13,6 +13,10 @@ final class ScreenTimeAuthService: ObservableObject {
         case error(String)
     }
 
+    init() {
+        checkAuthorization()
+    }
+
     /// Request individual authorization (user locks themselves).
     func requestAuthorization() async {
         do {

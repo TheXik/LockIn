@@ -52,19 +52,28 @@ struct JoinPactView: View {
                     }
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(result == .success ? .lockInSuccess : .lockInDanger)
+                    .transition(.opacity.combined(with: .scale))
                 }
 
-                LockInButton("Join Pact", icon: "person.badge.plus") {
+                LockInButton("Join Pact", icon: "person.badge.plus", disabled: code.count < 6 || pactService.isLoading) {
                     guard let userId = authService.currentUser?.id else { return }
                     Task {
-                        let success = await pactService.joinPact(code: code, userId: userId)
-                        joinResult = success ? .success : .notFound
-                        if success {
+                        let result = await pactService.joinPact(code: code, userId: userId)
+                        switch result {
+                        case .success:
+                            joinResult = .success
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.success)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { dismiss() }
+                        case .failure(.full):
+                            joinResult = .full
+                        case .failure(.alreadyMember):
+                            joinResult = .alreadyMember
+                        case .failure(.notFound), .failure(.unknown):
+                            joinResult = .notFound
                         }
                     }
                 }
-                .disabled(code.count < 6)
                 .opacity(code.count < 6 ? 0.5 : 1)
 
                 Spacer()
@@ -80,6 +89,8 @@ struct JoinPactView: View {
                         .foregroundColor(.lockInTextSecondary)
                 }
             }
+            .loadingOverlay(pactService.isLoading, message: "Joining...")
+            .errorBanner(pactService.error) { pactService.error = nil }
             .onAppear { isFocused = true }
         }
     }

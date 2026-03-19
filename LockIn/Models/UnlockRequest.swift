@@ -5,7 +5,7 @@ struct UnlockRequest: Codable, Identifiable, Hashable {
     let id: UUID
     let requesterId: UUID
     let pactId: UUID
-    let lockSessionId: UUID
+    var lockSessionId: UUID?        // Optional — may not have a persisted session yet
     var appIdentifier: String       // Which app they want to unlock
     var reason: String?             // "Need to check a message real quick"
     var status: Status

@@ -64,6 +64,9 @@ create policy "Members can read their pact's members"
 create policy "Authenticated users can join pacts"
     on public.pact_members for insert with check (auth.uid() = user_id);
 
+create policy "Users can leave pacts"
+    on public.pact_members for delete using (auth.uid() = user_id);
+
 
 -- ─── Lock Sessions ──────────────────────────────────────
 create table if not exists public.lock_sessions (
@@ -98,7 +101,7 @@ create table if not exists public.unlock_requests (
     id uuid primary key default gen_random_uuid(),
     requester_id uuid not null references public.profiles(id),
     pact_id uuid not null references public.pacts(id),
-    lock_session_id uuid not null references public.lock_sessions(id),
+    lock_session_id uuid references public.lock_sessions(id),  -- nullable: user may not have a persisted session yet
     app_identifier text not null,
     reason text,
     status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),

@@ -31,6 +31,8 @@ struct CreatePactView: View {
                         .foregroundColor(.lockInTextSecondary)
                 }
             }
+            .loadingOverlay(pactService.isLoading, message: "Creating...")
+            .errorBanner(pactService.error) { pactService.error = nil }
         }
     }
 
@@ -54,14 +56,12 @@ struct CreatePactView: View {
                 .foregroundColor(.lockInText)
                 .autocorrectionDisabled()
 
-            LockInButton("Create Pact", icon: "checkmark") {
+            LockInButton("Create Pact", icon: "checkmark", disabled: pactName.trimmingCharacters(in: .whitespaces).isEmpty || pactService.isLoading) {
                 guard let userId = authService.currentUser?.id else { return }
                 Task {
-                    createdPact = await pactService.createPact(name: pactName, userId: userId)
+                    createdPact = await pactService.createPact(name: pactName.trimmingCharacters(in: .whitespaces), userId: userId)
                 }
             }
-            .disabled(pactName.isEmpty)
-            .opacity(pactName.isEmpty ? 0.5 : 1)
 
             Spacer()
         }
@@ -108,10 +108,23 @@ struct CreatePactView: View {
                 .font(.system(size: 13))
                 .foregroundColor(isCopied ? .lockInSuccess : .lockInTextSecondary)
 
-            // Share button
+            // Share button — use plain label (not LockInButton) to avoid nested button conflict
             if let url = URL(string: "https://lockin.app/join/\(pact.inviteCode)") {
                 ShareLink(item: url, message: Text("Join my LockIn pact! Code: \(pact.inviteCode)")) {
-                    LockInButton("Share Invite Link", icon: "square.and.arrow.up", style: .ghost) {}
+                    HStack(spacing: 10) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Share Invite Link")
+                            .font(.system(size: 17, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .foregroundColor(.lockInPrimary)
+                    .cornerRadius(14)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.lockInPrimary.opacity(0.6), lineWidth: 2)
+                    )
                 }
             }
 

@@ -2,16 +2,17 @@ import SwiftUI
 
 extension Color {
     // MARK: - Brand Colors (Black/White/Yellow — BeReal × Duolingo vibe)
-    static let lockInPrimary = Color(hex: "FFD60A")       // Bright yellow
-    static let lockInSecondary = Color(hex: "FF9F0A")     // Warm orange
+    static let lockInPrimary = Color(hex: "FFD60A")       // Bright yellow — brand accent
+    static let lockInSecondary = Color(hex: "FF9F0A")     // Warm orange — secondary actions
     static let lockInBackground = Color(hex: "000000")    // OLED black
     static let lockInSurface = Color(hex: "141414")       // Card background
     static let lockInSurfaceLight = Color(hex: "1C1C1E")  // Elevated surface
     static let lockInSuccess = Color(hex: "30D158")       // Green
-    static let lockInWarning = Color(hex: "FFD60A")       // Yellow
+    static let lockInWarning = Color(hex: "FF9F0A")       // Orange — distinct from primary
     static let lockInDanger = Color(hex: "FF453A")        // Red
     static let lockInText = Color.white
     static let lockInTextSecondary = Color(hex: "8E8E93") // System gray
+    static let lockInTextTertiary = Color(hex: "636366")  // Dimmer gray for hints
 
     // MARK: - Hex Init
     init(hex: String) {

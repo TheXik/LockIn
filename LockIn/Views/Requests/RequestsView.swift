@@ -4,6 +4,9 @@ struct RequestsView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var unlockRequestService: UnlockRequestService
     @State private var selectedTab = 0
+    @State private var showUnlockRequestSheet = false
+    @State private var confirmingApproval: UnlockRequest?
+    @State private var confirmingDenial: UnlockRequest?
 
     var body: some View {
         NavigationStack {
@@ -29,10 +32,65 @@ struct RequestsView: View {
                     .padding(.top, 16)
                     .padding(.bottom, 40)
                 }
+                .refreshable {
+                    guard let userId = authService.currentUser?.id else { return }
+                    if selectedTab == 0 {
+                        await unlockRequestService.fetchPendingRequests(userId: userId)
+                    } else {
+                        await unlockRequestService.fetchMyRequests(userId: userId)
+                    }
+                }
             }
             .navigationTitle("Requests")
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showUnlockRequestSheet = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.lockInPrimary)
+                    }
+                    .accessibilityLabel("New unlock request")
+                }
+            }
+            .sheet(isPresented: $showUnlockRequestSheet) {
+                UnlockRequestSheet()
+            }
+            .loadingOverlay(unlockRequestService.isLoading)
+            .errorBanner(unlockRequestService.error) {
+                unlockRequestService.error = nil
+            }
+            // Confirmation dialogs
+            .alert("Approve Unlock?", isPresented: .init(
+                get: { confirmingApproval != nil },
+                set: { if !$0 { confirmingApproval = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { confirmingApproval = nil }
+                Button("Approve") {
+                    guard let request = confirmingApproval,
+                          let userId = authService.currentUser?.id else { return }
+                    Task { await unlockRequestService.approveRequest(request, responderId: userId) }
+                    confirmingApproval = nil
+                }
+            } message: {
+                Text("This will let them use the app. Are you sure?")
+            }
+            .alert("Deny Unlock?", isPresented: .init(
+                get: { confirmingDenial != nil },
+                set: { if !$0 { confirmingDenial = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { confirmingDenial = nil }
+                Button("Deny", role: .destructive) {
+                    guard let request = confirmingDenial,
+                          let userId = authService.currentUser?.id else { return }
+                    Task { await unlockRequestService.denyRequest(request, responderId: userId) }
+                    confirmingDenial = nil
+                }
+            } message: {
+                Text("Their app will stay locked.")
+            }
         }
     }
 
@@ -51,12 +109,10 @@ struct RequestsView: View {
                         request: request,
                         requesterName: "Pact Member", // TODO: resolve from profile
                         onApprove: {
-                            guard let userId = authService.currentUser?.id else { return }
-                            Task { await unlockRequestService.approveRequest(request, responderId: userId) }
+                            confirmingApproval = request
                         },
                         onDeny: {
-                            guard let userId = authService.currentUser?.id else { return }
-                            Task { await unlockRequestService.denyRequest(request, responderId: userId) }
+                            confirmingDenial = request
                         }
                     )
                 }
@@ -71,7 +127,7 @@ struct RequestsView: View {
                 emptyState(
                     emoji: "🔒",
                     title: "No requests",
-                    subtitle: "When you need to unlock an app, you'll request it here."
+                    subtitle: "When you need to unlock an app, tap + to request."
                 )
             } else {
                 ForEach(unlockRequestService.myRequests) { request in
@@ -94,6 +150,8 @@ struct RequestsView: View {
                         statusBadge(request.status)
                     }
                     .lockInCard()
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Request for \(request.appIdentifier), status: \(request.status.rawValue)")
                 }
             }
         }

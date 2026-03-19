@@ -5,6 +5,7 @@ struct MainTabView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var pactService: PactService
     @EnvironmentObject var unlockRequestService: UnlockRequestService
+    @EnvironmentObject var screenTimeAuth: ScreenTimeAuthService
     @State private var selectedTab = 0
 
     var body: some View {
@@ -51,6 +52,15 @@ struct MainTabView: View {
             await pactService.fetchMyPacts(userId: userId)
             await unlockRequestService.fetchPendingRequests(userId: userId)
             await unlockRequestService.listenForNewRequests(userId: userId)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToRequestsTab)) { _ in
+            selectedTab = 3
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToPactsTab)) { _ in
+            selectedTab = 1
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .switchToLockTab)) { _ in
+            selectedTab = 2
         }
     }
 }

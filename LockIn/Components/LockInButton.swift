@@ -4,62 +4,82 @@ struct LockInButton: View {
     let title: String
     let icon: String?
     let style: ButtonVariant
+    let isDisabled: Bool
     let action: () -> Void
 
     enum ButtonVariant {
-        case primary    // Yellow bg, black text
+        case primary    // Gradient bg, black text
         case secondary  // Dark surface bg, white text
         case danger     // Red bg, white text
-        case ghost      // Transparent, yellow border
+        case ghost      // Transparent, subtle border
     }
 
     init(
         _ title: String,
         icon: String? = nil,
         style: ButtonVariant = .primary,
+        disabled: Bool = false,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.icon = icon
         self.style = style
+        self.isDisabled = disabled
         self.action = action
     }
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
+        Button(action: {
+            guard !isDisabled else { return }
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            action()
+        }) {
+            HStack(spacing: 8) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                 }
                 Text(title)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(backgroundColor)
-            .foregroundColor(foregroundColor)
+            .padding(.vertical, 15)
+            .background(backgroundView)
+            .foregroundColor(isDisabled ? .lockInTextTertiary : foregroundColor)
             .cornerRadius(14)
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(borderColor, lineWidth: style == .ghost ? 2 : 0)
+                    .stroke(borderColor, lineWidth: style == .ghost ? 1.5 : 0)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScaleButtonStyle())
+        .allowsHitTesting(!isDisabled)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isDisabled ? .isStaticText : .isButton)
     }
 
-    private var backgroundColor: Color {
-        switch style {
-        case .primary: return .lockInPrimary
-        case .secondary: return .lockInSurfaceLight
-        case .danger: return .lockInDanger
-        case .ghost: return .clear
+    @ViewBuilder
+    private var backgroundView: some View {
+        if isDisabled {
+            Color.lockInSurfaceLight
+        } else {
+            switch style {
+            case .primary:
+                LockInGradient.primary
+            case .secondary:
+                Color.lockInSurfaceLight
+            case .danger:
+                Color.lockInDanger
+            case .ghost:
+                Color.clear
+            }
         }
     }
 
     private var foregroundColor: Color {
         switch style {
-        case .primary: return .black  // Black text on yellow
+        case .primary: return .black
         case .secondary: return .lockInText
         case .danger: return .white
         case .ghost: return .lockInPrimary
@@ -67,6 +87,17 @@ struct LockInButton: View {
     }
 
     private var borderColor: Color {
-        style == .ghost ? .lockInPrimary.opacity(0.6) : .clear
+        if isDisabled { return .lockInTextTertiary.opacity(0.3) }
+        return style == .ghost ? Color.lockInPrimary.opacity(0.4) : .clear
+    }
+}
+
+/// Press-down scale animation for buttons.
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

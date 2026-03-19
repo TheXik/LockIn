@@ -9,7 +9,7 @@ struct PactListView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 16) {
                     if pactService.myPacts.isEmpty {
                         emptyState
                     } else {
@@ -17,7 +17,7 @@ struct PactListView: View {
                             NavigationLink {
                                 PactDetailView(pact: pact)
                             } label: {
-                                PactCard(pact: pact, members: pactService.currentPactMembers) {}
+                                PactCard(pact: pact, members: pactService.members(for: pact.id))
                             }
                             .buttonStyle(.plain)
                         }
@@ -27,46 +27,62 @@ struct PactListView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
+            .refreshable {
+                guard let userId = authService.currentUser?.id else { return }
+                await pactService.fetchMyPacts(userId: userId)
+            }
             .navigationTitle("Pacts")
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("Create Pact", systemImage: "plus") {
-                            showCreatePact = true
+                        Button { showCreatePact = true } label: {
+                            Label("Create Pact", systemImage: "plus")
                         }
-                        Button("Join Pact", systemImage: "link") {
-                            showJoinPact = true
+                        Button { showJoinPact = true } label: {
+                            Label("Join Pact", systemImage: "link")
                         }
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.lockInPrimary)
+                            .font(.system(size: 20))
+                            .foregroundStyle(LockInGradient.primary)
                     }
                 }
             }
             .sheet(isPresented: $showCreatePact) { CreatePactView() }
             .sheet(isPresented: $showJoinPact) { JoinPactView() }
+            .loadingOverlay(pactService.isLoading)
+            .errorBanner(pactService.error) { pactService.error = nil }
         }
     }
 
     private var emptyState: some View {
-        VStack(spacing: 24) {
-            Spacer().frame(height: 60)
+        VStack(spacing: 28) {
+            Spacer().frame(height: 48)
 
-            Text("🤝")
-                .font(.system(size: 64))
+            ZStack {
+                Circle()
+                    .fill(Color.lockInPrimary.opacity(0.08))
+                    .frame(width: 80, height: 80)
 
-            Text("No pacts yet")
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.lockInText)
+                Image(systemName: "person.2.fill")
+                    .font(.system(size: 32))
+                    .foregroundStyle(LockInGradient.primary)
+            }
 
-            Text("A pact is your accountability group.\nCreate one and invite your co-founder or friend.")
-                .font(.system(size: 15))
-                .foregroundColor(.lockInTextSecondary)
-                .multilineTextAlignment(.center)
+            VStack(spacing: 8) {
+                Text("No pacts yet")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.lockInText)
 
-            VStack(spacing: 12) {
+                Text("A pact is your accountability group.\nCreate one and invite your co-founder or friend.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.lockInTextSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: 10) {
                 LockInButton("Create a Pact", icon: "plus") {
                     showCreatePact = true
                 }
@@ -76,6 +92,6 @@ struct PactListView: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
     }
 }

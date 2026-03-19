@@ -5,13 +5,17 @@ struct HomeView: View {
     @EnvironmentObject var shieldManager: ShieldManager
     @EnvironmentObject var pactService: PactService
     @EnvironmentObject var unlockRequestService: UnlockRequestService
+    @EnvironmentObject var streakService: StreakService
+    @State private var showUnlockRequestSheet = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    greetingSection
-                    statusSection
+                    headerSection
+                    focusRingSection
+                    statsRow
+                    actionButtons
 
                     if !unlockRequestService.pendingRequests.isEmpty {
                         pendingRequestsBanner
@@ -27,108 +31,296 @@ struct HomeView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 40)
             }
-            .navigationTitle("LockIn")
+            .refreshable {
+                guard let userId = authService.currentUser?.id else { return }
+                await pactService.fetchMyPacts(userId: userId)
+                await unlockRequestService.fetchPendingRequests(userId: userId)
+                await streakService.computeStreak(userId: userId)
+            }
+            .navigationTitle("")
+            .navigationBarHidden(true)
             .lockInScreenBackground()
-            .toolbarColorScheme(.dark, for: .navigationBar)
+            .sheet(isPresented: $showUnlockRequestSheet) {
+                UnlockRequestSheet()
+            }
         }
     }
 
-    // MARK: - Greeting
-    private var greetingSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Hey, \(authService.currentUser?.displayName ?? "there") 👋")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.lockInText)
+    // MARK: - Header (greeting + streak badge)
 
-                Text(shieldManager.isLockActive ? "You're locked in. Stay hard." : "Ready to lock in?")
-                    .font(.system(size: 15))
+    private var headerSection: some View {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(greetingText)
+                    .font(.system(size: 14))
                     .foregroundColor(.lockInTextSecondary)
+
+                Text(authService.currentUser?.displayName ?? "there")
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
             }
             Spacer()
-            Text(authService.currentUser?.avatarEmoji ?? "🔥")
-                .font(.system(size: 36))
+
+            // Streak badge
+            HStack(spacing: 5) {
+                Text("🔥")
+                    .font(.system(size: 18))
+                Text("\(streakService.currentStreak)")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundColor(.lockInPrimary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.lockInPrimary.opacity(0.1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color.lockInPrimary.opacity(0.2), lineWidth: 1)
+            )
+            .cornerRadius(24)
+            .accessibilityLabel("\(streakService.currentStreak) day streak")
+        }
+        .padding(.top, 8)
+    }
+
+    private var greetingText: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        case 17..<22: return "Good evening"
+        default: return "Late night grind"
         }
     }
 
-    // MARK: - Status
-    private var statusSection: some View {
+    // MARK: - Focus Ring
+
+    private var focusRingSection: some View {
         VStack(spacing: 16) {
             TimerRing(
-                progress: shieldManager.isLockActive ? 0.7 : 0,
-                timeRemaining: shieldManager.isLockActive ? "active" : "00:00",
-                isActive: shieldManager.isLockActive
+                isActive: shieldManager.isLockActive,
+                lockedAppCount: shieldManager.selectedApps.applicationTokens.count,
+                streakDays: streakService.currentStreak,
+                squadMembers: buildSquadMembers()
             )
 
+            // Status text
             if shieldManager.isLockActive {
-                LockInButton("Request Unlock", icon: "lock.open.fill", style: .ghost) {
-                    // navigate to unlock request flow
-                }
+                VStack(spacing: 4) {
+                    Text("Your squad can see you're focused")
+                        .font(.system(size: 13))
+                        .foregroundColor(.lockInTextSecondary)
 
-                Text("\(shieldManager.selectedApps.applicationTokens.count) apps locked")
+                    if let duration = shieldManager.lockDurationFormatted {
+                        Text("Locked for \(duration)")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(.lockInPrimary)
+                    }
+                }
+            } else {
+                Text("Lock apps to start your focus session")
                     .font(.system(size: 13))
-                    .foregroundColor(.lockInTextSecondary)
+                    .foregroundColor(.lockInTextTertiary)
             }
+        }
+    }
+
+    // MARK: - Stats Row
+
+    private var statsRow: some View {
+        HStack(spacing: 0) {
+            StatPill(icon: "shield.fill", value: "\(shieldManager.selectedApps.applicationTokens.count)", label: "Blocked")
+            StatDivider()
+            StatPill(icon: "flame.fill", value: "\(streakService.currentStreak)d", label: "Streak")
+            StatDivider()
+            StatPill(icon: "hand.raised.fill", value: "\(unlockRequestService.myRequests.filter { $0.status == .denied }.count)", label: "Resisted")
         }
         .lockInCard()
     }
 
-    // MARK: - Pending Requests
-    private var pendingRequestsBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bell.badge.fill")
-                .foregroundColor(.lockInPrimary)
-                .font(.system(size: 20))
+    // MARK: - Action Buttons
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(unlockRequestService.pendingRequests.count) unlock requests")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.lockInText)
-                Text("Your pact members need you")
-                    .font(.system(size: 13))
-                    .foregroundColor(.lockInTextSecondary)
+    private var actionButtons: some View {
+        Group {
+            if shieldManager.isLockActive {
+                LockInButton("Request Unlock", icon: "lock.open.fill", style: .ghost) {
+                    showUnlockRequestSheet = true
+                }
+            } else if !pactService.myPacts.isEmpty {
+                LockInButton("Lock In 🔥") {
+                    NotificationCenter.default.post(name: .switchToLockTab, object: nil)
+                }
             }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .foregroundColor(.lockInTextSecondary)
         }
-        .lockInCard()
+    }
+
+    // MARK: - Pending Requests Banner
+
+    private var pendingRequestsBanner: some View {
+        Button {
+            NotificationCenter.default.post(name: .switchToRequestsTab, object: nil)
+        } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.lockInDanger.opacity(0.12))
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(LockInGradient.primary)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(unlockRequestService.pendingRequests.count) unlock request\(unlockRequestService.pendingRequests.count == 1 ? "" : "s")")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.lockInText)
+                    Text("Your squad needs you")
+                        .font(.system(size: 13))
+                        .foregroundColor(.lockInTextSecondary)
+                }
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.lockInTextTertiary)
+            }
+            .lockInCard()
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.lockInPrimary.opacity(0.25), lineWidth: 1)
+            )
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .accessibilityLabel("\(unlockRequestService.pendingRequests.count) pending unlock requests. Tap to review.")
     }
 
     // MARK: - Pacts
+
     private var pactsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             if !pactService.myPacts.isEmpty {
                 Text("YOUR PACTS")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.lockInTextSecondary)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.lockInTextTertiary)
                     .tracking(1.5)
+                    .padding(.leading, 4)
 
                 ForEach(pactService.myPacts) { pact in
-                    PactCard(pact: pact, members: pactService.currentPactMembers) {}
+                    NavigationLink {
+                        PactDetailView(pact: pact)
+                    } label: {
+                        PactCard(pact: pact, members: pactService.members(for: pact.id))
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
     }
 
     // MARK: - No Pacts CTA
+
     private var noPactsCTA: some View {
-        VStack(spacing: 16) {
-            Text("👥")
-                .font(.system(size: 48))
+        VStack(spacing: 20) {
+            // Two connected emojis — the social hook
+            HStack(spacing: 0) {
+                Text("🔥")
+                    .font(.system(size: 32))
+                    .frame(width: 56, height: 56)
+                    .background(Color.lockInPrimary.opacity(0.08))
+                    .clipShape(Circle())
 
-            Text("Find your accountability partner")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.lockInText)
-                .multilineTextAlignment(.center)
+                // Connection line
+                Rectangle()
+                    .fill(LockInGradient.primary)
+                    .frame(width: 30, height: 2)
 
-            Text("Create a pact with your co-founder or friend.\nHold each other accountable.")
-                .font(.system(size: 14))
-                .foregroundColor(.lockInTextSecondary)
-                .multilineTextAlignment(.center)
+                Text("💪")
+                    .font(.system(size: 32))
+                    .frame(width: 56, height: 56)
+                    .background(Color.lockInSecondary.opacity(0.08))
+                    .clipShape(Circle())
+            }
 
-            LockInButton("Create a Pact", icon: "plus") {}
+            VStack(spacing: 6) {
+                Text("Better together")
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundColor(.lockInText)
+
+                Text("Create a pact with a friend.\nThey approve your unlocks — and you approve theirs.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.lockInTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
+            }
+
+            LockInButton("Create a Pact", icon: "plus") {
+                NotificationCenter.default.post(name: .switchToPactsTab, object: nil)
+            }
         }
         .lockInCard()
     }
+
+    // MARK: - Helpers
+
+    private func buildSquadMembers() -> [TimerRing.SquadMember] {
+        guard let firstPact = pactService.myPacts.first else { return [] }
+        let members = pactService.members(for: firstPact.id)
+        let currentUserId = authService.currentUser?.id
+
+        return members
+            .filter { $0.userId != currentUserId } // Exclude self
+            .prefix(4) // Max 4 orbiting
+            .map { member in
+                TimerRing.SquadMember(
+                    id: member.id,
+                    emoji: member.profile?.avatarEmoji ?? "🔥",
+                    name: member.profile?.displayName ?? "?",
+                    isLockedIn: false // TODO: fetch from lock_sessions
+                )
+            }
+    }
+}
+
+// MARK: - Stat Pill
+
+private struct StatPill: View {
+    let icon: String
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundStyle(LockInGradient.primary)
+
+            Text(value)
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.lockInTextTertiary)
+                .tracking(0.5)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct StatDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.06))
+            .frame(width: 1, height: 36)
+    }
+}
+
+// MARK: - Tab Switch Notifications
+
+extension Notification.Name {
+    static let switchToRequestsTab = Notification.Name("switchToRequestsTab")
+    static let switchToPactsTab = Notification.Name("switchToPactsTab")
+    static let switchToLockTab = Notification.Name("switchToLockTab")
+    static let unlockApproved = Notification.Name("unlockApproved")
 }

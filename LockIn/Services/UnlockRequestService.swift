@@ -1,24 +1,32 @@
 import Foundation
+import Supabase
+import Realtime
 
 /// Handles unlock requests between pact members — request, approve, deny.
 @MainActor
 final class UnlockRequestService: ObservableObject {
     @Published var pendingRequests: [UnlockRequest] = []   // Requests I need to approve/deny
     @Published var myRequests: [UnlockRequest] = []        // Requests I've sent
+    @Published var isLoading = false
+    @Published var error: String?
+
+    private var realtimeChannel: RealtimeChannelV2?
 
     // MARK: - Send Request
 
     func requestUnlock(
         requesterId: UUID,
         pactId: UUID,
-        lockSessionId: UUID,
         appIdentifier: String,
         reason: String?
     ) async -> Bool {
+        isLoading = true
+        error = nil
+        defer { isLoading = false }
+
         let data: [String: String] = [
             "requester_id": requesterId.uuidString,
             "pact_id": pactId.uuidString,
-            "lock_session_id": lockSessionId.uuidString,
             "app_identifier": appIdentifier,
             "reason": reason ?? "",
             "status": "pending"
@@ -33,6 +41,7 @@ final class UnlockRequestService: ObservableObject {
             await fetchMyRequests(userId: requesterId)
             return true
         } catch {
+            self.error = "Failed to send unlock request"
             print("Failed to send unlock request: \(error)")
             return false
         }
@@ -49,6 +58,10 @@ final class UnlockRequestService: ObservableObject {
     }
 
     private func respond(to request: UnlockRequest, status: UnlockRequest.Status, responderId: UUID) async {
+        isLoading = true
+        error = nil
+        defer { isLoading = false }
+
         do {
             try await supabase
                 .from("unlock_requests")
@@ -62,6 +75,7 @@ final class UnlockRequestService: ObservableObject {
 
             await fetchPendingRequests(userId: responderId)
         } catch {
+            self.error = "Failed to \(status.rawValue) request"
             print("Failed to respond to request: \(error)")
         }
     }
@@ -119,23 +133,33 @@ final class UnlockRequestService: ObservableObject {
         }
     }
 
-    // MARK: - Realtime
+    // MARK: - Realtime (v2 API)
 
     func listenForNewRequests(userId: UUID) async {
-        let channel = supabase.channel("unlock-requests")
+        // Clean up existing channel
+        if let existing = realtimeChannel {
+            await supabase.realtimeV2.removeChannel(existing)
+        }
 
-        let changes = channel.postgresChange(
-            InsertAction.self,
-            schema: "public",
-            table: "unlock_requests"
-        )
+        let channel = supabase.realtimeV2.channel("unlock-requests")
+
+        let insertions = channel.postgresChange(InsertAction.self, table: "unlock_requests")
 
         await channel.subscribe()
 
-        Task {
-            for await _ in changes {
-                await fetchPendingRequests(userId: userId)
+        self.realtimeChannel = channel
+
+        Task { [weak self] in
+            for await _ in insertions {
+                await self?.fetchPendingRequests(userId: userId)
             }
+        }
+    }
+
+    func stopListening() async {
+        if let channel = realtimeChannel {
+            await supabase.realtimeV2.removeChannel(channel)
+            realtimeChannel = nil
         }
     }
 }

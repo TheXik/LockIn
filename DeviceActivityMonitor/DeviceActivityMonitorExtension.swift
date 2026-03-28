@@ -8,7 +8,7 @@ import Foundation
 class DeviceActivityMonitorExtension: DeviceActivityMonitor {
 
     private let store = ManagedSettingsStore()
-    private let appGroupID = "group.com.lockin.app"
+    private let appGroupID = "group.com.lukashellesch.lockin"
 
     // MARK: - Schedule Events
 

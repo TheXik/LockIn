@@ -6,7 +6,7 @@ import UIKit
 /// Reads lock context from App Group UserDefaults for personalized messages.
 class ShieldConfigurationExtension: ShieldConfigurationDataSource {
 
-    private let appGroupID = "group.com.lockin.app"
+    private let appGroupID = "group.com.lukashellesch.lockin"
 
     override func configuration(shielding application: Application) -> ShieldConfiguration {
         makeConfig(for: .app)

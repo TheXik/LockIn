@@ -1,6 +1,6 @@
 name: LockIn
 options:
-  bundleIdPrefix: com.lockin
+  bundleIdPrefix: com.lukashellesch.lockin
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.0"
@@ -15,7 +15,7 @@ settings:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
     TARGETED_DEVICE_FAMILY: "1"  # iPhone only
-    DEVELOPMENT_TEAM: ""  # Fill in with your Apple Developer Team ID
+    DEVELOPMENT_TEAM: "Y2JC2VK9VP"
 
 schemes:
   LockIn:
@@ -39,18 +39,24 @@ targets:
         excludes:
           - "**/*.entitlements"
       - path: Shared
+    configFiles:
+      Debug: Secrets.xcconfig
+      Release: Secrets.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin
         INFOPLIST_FILE: LockIn/Info.plist
         CODE_SIGN_ENTITLEMENTS: LockIn/LockIn.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     entitlements:
       path: LockIn/LockIn.entitlements
       properties:
+        com.apple.developer.applesignin:
+          - Default
         com.apple.developer.family-controls: true
+        aps-environment: development
         com.apple.security.application-groups:
-          - group.com.lockin.app
+          - group.com.lukashellesch.lockin
     dependencies:
       - target: ShieldConfigurationExtension
       - target: ShieldActionExtension
@@ -68,7 +74,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.ShieldConfiguration
+        PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.ShieldConfiguration
         INFOPLIST_FILE: ShieldConfiguration/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldConfiguration/ShieldConfiguration.entitlements
     entitlements:
@@ -76,7 +82,7 @@ targets:
       properties:
         com.apple.developer.family-controls: true
         com.apple.security.application-groups:
-          - group.com.lockin.app
+          - group.com.lukashellesch.lockin
 
   # ─── Shield Action Extension ───────────────────────────
   ShieldActionExtension:
@@ -89,7 +95,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.ShieldAction
+        PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.ShieldAction
         INFOPLIST_FILE: ShieldAction/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldAction/ShieldAction.entitlements
     entitlements:
@@ -97,7 +103,7 @@ targets:
       properties:
         com.apple.developer.family-controls: true
         com.apple.security.application-groups:
-          - group.com.lockin.app
+          - group.com.lukashellesch.lockin
 
   # ─── Device Activity Monitor Extension ─────────────────
   DeviceActivityMonitorExtension:
@@ -110,7 +116,7 @@ targets:
       - path: Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lockin.app.DeviceActivityMonitor
+        PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.DeviceActivityMonitor
         INFOPLIST_FILE: DeviceActivityMonitor/Info.plist
         CODE_SIGN_ENTITLEMENTS: DeviceActivityMonitor/DeviceActivityMonitor.entitlements
     entitlements:
@@ -118,4 +124,4 @@ targets:
       properties:
         com.apple.developer.family-controls: true
         com.apple.security.application-groups:
-          - group.com.lockin.app
+          - group.com.lukashellesch.lockin

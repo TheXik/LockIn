@@ -25,7 +25,7 @@ class ShieldActionExtension: ShieldActionDelegate {
         case .primaryButtonPressed:
             // "Open LockIn" — close shield so user can switch to LockIn app.
             // Write a flag so the app knows to open the Requests tab on next launch.
-            if let defaults = UserDefaults(suiteName: "group.com.lockin.app") {
+            if let defaults = UserDefaults(suiteName: "group.com.lukashellesch.lockin") {
                 defaults.set(true, forKey: "lockin.pendingUnlockFromShield")
                 defaults.set(Date().timeIntervalSince1970, forKey: "lockin.shieldTapTimestamp")
             }

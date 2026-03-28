@@ -6,7 +6,7 @@
     <true/>
     <key>com.apple.security.application-groups</key>
     <array>
-        <string>group.com.lockin.app</string>
+        <string>group.com.lukashellesch.lockin</string>
     </array>
 </dict>
 </plist>

@@ -36,3 +36,13 @@ Pods/
 # Temporary files
 *.orig
 .gitnexus
+
+# Secrets
+Secrets.xcconfig
+*.p8
+*.p12
+*.pem
+*.cer
+*.mobileprovision
+.env
+.env.*

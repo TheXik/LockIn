@@ -9,6 +9,9 @@ final class AuthService: ObservableObject {
     @Published var currentUser: Profile?
     @Published var isLoading = true
 
+    /// Closure called on sign-out so the app can clean up other services.
+    var onSignOut: (() async -> Void)?
+
     init() {
         Task { await listenForAuthChanges() }
     }
@@ -55,7 +58,9 @@ final class AuthService: ObservableObject {
                 }
             }
         } catch {
+            #if DEBUG
             print("Apple sign-in failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -89,28 +94,47 @@ final class AuthService: ObservableObject {
                     .value
                 currentUser = created
             } catch {
+                #if DEBUG
                 print("Failed to create profile: \(error)")
+                #endif
             }
         }
     }
 
     func updateDisplayName(_ name: String) async {
         guard var user = currentUser else { return }
-        user.displayName = name
+
+        // Input validation
+        let sanitized = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100))
+        guard !sanitized.isEmpty else { return }
+
+        user.displayName = sanitized
         do {
             try await supabase
                 .from("profiles")
-                .update(["display_name": name])
+                .update(["display_name": sanitized])
                 .eq("id", value: user.id.uuidString)
                 .execute()
             currentUser = user
         } catch {
+            #if DEBUG
             print("Failed to update name: \(error)")
+            #endif
         }
     }
 
     func signOut() async {
-        try? await supabase.auth.signOut()
+        // Clean up other services first
+        await onSignOut?()
+
+        do {
+            try await supabase.auth.signOut()
+        } catch {
+            #if DEBUG
+            print("Sign-out error: \(error)")
+            #endif
+        }
+
         isAuthenticated = false
         currentUser = nil
     }

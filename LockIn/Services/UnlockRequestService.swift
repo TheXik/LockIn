@@ -24,11 +24,20 @@ final class UnlockRequestService: ObservableObject {
         error = nil
         defer { isLoading = false }
 
+        // Validate inputs
+        let safeAppId = String(appIdentifier.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100))
+        let safeReason = reason.map { String($0.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500)) }
+
+        guard !safeAppId.isEmpty else {
+            self.error = "App name cannot be empty"
+            return false
+        }
+
         let data: [String: String] = [
             "requester_id": requesterId.uuidString,
             "pact_id": pactId.uuidString,
-            "app_identifier": appIdentifier,
-            "reason": reason ?? "",
+            "app_identifier": safeAppId,
+            "reason": safeReason ?? "",
             "status": "pending"
         ]
 
@@ -40,9 +49,21 @@ final class UnlockRequestService: ObservableObject {
 
             await fetchMyRequests(userId: requesterId)
             return true
+        } catch let error as PostgrestError {
+            if error.message.contains("Too many pending") || error.message.contains("max 5") {
+                self.error = "Too many pending requests. Wait for responses."
+            } else {
+                self.error = "Failed to send unlock request"
+            }
+            #if DEBUG
+            print("Failed to send unlock request: \(error)")
+            #endif
+            return false
         } catch {
             self.error = "Failed to send unlock request"
+            #if DEBUG
             print("Failed to send unlock request: \(error)")
+            #endif
             return false
         }
     }
@@ -62,6 +83,18 @@ final class UnlockRequestService: ObservableObject {
         error = nil
         defer { isLoading = false }
 
+        // Client-side self-approval check (server RLS also prevents this)
+        guard responderId != request.requesterId else {
+            self.error = "You cannot approve your own request"
+            return
+        }
+
+        // Client-side check: only respond to pending requests
+        guard request.status == .pending else {
+            self.error = "This request has already been responded to"
+            return
+        }
+
         do {
             try await supabase
                 .from("unlock_requests")
@@ -76,7 +109,9 @@ final class UnlockRequestService: ObservableObject {
             await fetchPendingRequests(userId: responderId)
         } catch {
             self.error = "Failed to \(status.rawValue) request"
+            #if DEBUG
             print("Failed to respond to request: \(error)")
+            #endif
         }
     }
 
@@ -111,7 +146,9 @@ final class UnlockRequestService: ObservableObject {
 
             pendingRequests = requests
         } catch {
+            #if DEBUG
             print("Failed to fetch pending requests: \(error)")
+            #endif
         }
     }
 
@@ -129,7 +166,9 @@ final class UnlockRequestService: ObservableObject {
 
             myRequests = requests
         } catch {
+            #if DEBUG
             print("Failed to fetch my requests: \(error)")
+            #endif
         }
     }
 
@@ -161,5 +200,14 @@ final class UnlockRequestService: ObservableObject {
             await supabase.realtimeV2.removeChannel(channel)
             realtimeChannel = nil
         }
+    }
+
+    // MARK: - Cleanup
+
+    /// Clear all cached data (call on sign-out).
+    func reset() {
+        pendingRequests = []
+        myRequests = []
+        error = nil
     }
 }

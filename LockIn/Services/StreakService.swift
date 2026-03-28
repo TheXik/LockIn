@@ -77,7 +77,9 @@ final class StreakService: ObservableObject {
             longestStreak = max(streak, computeLongestStreak(days: uniqueDays, calendar: calendar))
 
         } catch {
+            #if DEBUG
             print("Failed to compute streak: \(error)")
+            #endif
         }
     }
 

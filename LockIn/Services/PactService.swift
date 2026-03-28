@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 /// Manages pacts (accountability groups) — create, join, list members.
 @MainActor
@@ -49,7 +50,9 @@ final class PactService: ObservableObject {
             return pact
         } catch {
             self.error = "Failed to create pact"
+            #if DEBUG
             print("Failed to create pact: \(error)")
+            #endif
             return nil
         }
     }
@@ -66,35 +69,18 @@ final class PactService: ObservableObject {
         defer { isLoading = false }
 
         do {
-            // Find pact by invite code
-            let pact: Pact = try await supabase
-                .from("pacts")
-                .select()
-                .eq("invite_code", value: code.uppercased())
-                .single()
+            // Find pact by invite code using secure RPC (doesn't expose all pacts)
+            let pacts: [Pact] = try await supabase
+                .rpc("lookup_pact_by_invite_code", params: ["code": code.uppercased()])
                 .execute()
                 .value
 
-            // Check member count (max 4)
-            let members: [PactMember] = try await supabase
-                .from("pact_members")
-                .select()
-                .eq("pact_id", value: pact.id.uuidString)
-                .execute()
-                .value
-
-            guard members.count < 4 else {
-                self.error = "This pact is full (max 4 members)"
-                return .failure(.full)
+            guard let pact = pacts.first else {
+                self.error = "Invalid code. Check and try again."
+                return .failure(.notFound)
             }
 
-            // Check not already a member
-            guard !members.contains(where: { $0.userId == userId }) else {
-                self.error = "You're already in this pact"
-                return .failure(.alreadyMember)
-            }
-
-            // Join
+            // Join — server-side trigger enforces max 4 members and prevents duplicates
             try await supabase
                 .from("pact_members")
                 .insert([
@@ -105,9 +91,24 @@ final class PactService: ObservableObject {
 
             await fetchMyPacts(userId: userId)
             return .success(pact)
+        } catch let error as PostgrestError {
+            if error.message.contains("full") || error.message.contains("max 4") {
+                self.error = "This pact is full (max 4 members)"
+                return .failure(.full)
+            } else if error.message.contains("duplicate") || error.code == "23505" {
+                self.error = "You're already in this pact"
+                return .failure(.alreadyMember)
+            }
+            self.error = "Invalid code. Check and try again."
+            #if DEBUG
+            print("Failed to join pact: \(error)")
+            #endif
+            return .failure(.notFound)
         } catch {
             self.error = "Invalid code. Check and try again."
+            #if DEBUG
             print("Failed to join pact: \(error)")
+            #endif
             return .failure(.notFound)
         }
     }
@@ -132,7 +133,9 @@ final class PactService: ObservableObject {
             return true
         } catch {
             self.error = "Failed to leave pact"
+            #if DEBUG
             print("Failed to leave pact: \(error)")
+            #endif
             return false
         }
     }
@@ -176,7 +179,9 @@ final class PactService: ObservableObject {
                 }
             }
         } catch {
+            #if DEBUG
             print("Failed to fetch pacts: \(error)")
+            #endif
         }
     }
 
@@ -189,13 +194,15 @@ final class PactService: ObservableObject {
         do {
             let members: [PactMember] = try await supabase
                 .from("pact_members")
-                .select("*, profile:profiles(*)")
+                .select("*, profile:profiles(id, display_name, avatar_emoji, created_at)")
                 .eq("pact_id", value: pactId.uuidString)
                 .execute()
                 .value
             return members
         } catch {
+            #if DEBUG
             print("Failed to fetch members: \(error)")
+            #endif
             return []
         }
     }

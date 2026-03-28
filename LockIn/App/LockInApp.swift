@@ -36,6 +36,18 @@ struct LockInApp: App {
             .environmentObject(pushService)
             .environmentObject(streakService)
             .task {
+                // Wire up sign-out cleanup
+                authService.onSignOut = { [weak unlockRequestService, weak pactService, weak streakService] in
+                    await unlockRequestService?.stopListening()
+                    unlockRequestService?.reset()
+                    pactService?.myPacts = []
+                    pactService?.pactMembers = [:]
+                    streakService?.currentStreak = 0
+                    streakService?.longestStreak = 0
+                    streakService?.totalLockDays = 0
+                    streakService?.totalLocksThisWeek = 0
+                }
+
                 // Register for push when authenticated
                 if authService.isAuthenticated {
                     _ = await pushService.requestPermission()

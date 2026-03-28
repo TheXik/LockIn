@@ -80,7 +80,7 @@ struct LockSetupView: View {
                     // Deactivate
                     if shieldManager.isLockActive {
                         LockInButton("Remove Lock", icon: "lock.open.fill", style: .danger) {
-                            shieldManager.deactivateShield()
+                            shieldManager.deactivateShield(userId: authService.currentUser?.id)
                         }
                     }
 
@@ -451,7 +451,9 @@ struct LockSetupView: View {
                 .insert(sessionData)
                 .execute()
         } catch {
+            #if DEBUG
             print("Failed to persist lock session: \(error)")
+            #endif
             errorMessage = "Couldn't save lock session to server, but your apps are still blocked locally."
         }
 

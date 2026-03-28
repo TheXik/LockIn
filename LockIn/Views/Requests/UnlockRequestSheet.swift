@@ -152,8 +152,16 @@ struct UnlockRequestSheet: View {
         }
     }
 
+    private var sanitizedAppName: String {
+        String(appName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100))
+    }
+
+    private var sanitizedReason: String {
+        String(reason.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))
+    }
+
     private var canSend: Bool {
-        selectedPact != nil && !appName.trimmingCharacters(in: .whitespaces).isEmpty && !isSending
+        selectedPact != nil && !sanitizedAppName.isEmpty && !isSending
     }
 
     private func sendRequest() async {
@@ -166,8 +174,8 @@ struct UnlockRequestSheet: View {
         let success = await unlockRequestService.requestUnlock(
             requesterId: userId,
             pactId: pact.id,
-            appIdentifier: appName.trimmingCharacters(in: .whitespaces),
-            reason: reason.isEmpty ? nil : reason
+            appIdentifier: sanitizedAppName,
+            reason: sanitizedReason.isEmpty ? nil : sanitizedReason
         )
 
         if success {

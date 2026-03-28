@@ -46,11 +46,23 @@ final class ShieldManager: ObservableObject {
         isLockActive = true
     }
 
-    /// Remove all shields.
-    func deactivateShield() {
+    /// Remove all shields and notify server.
+    func deactivateShield(userId: UUID? = nil) {
         store.clearAllSettings()
         lockStartedAt = nil
         isLockActive = false
+
+        // Mark lock sessions as inactive on server
+        if let userId {
+            Task {
+                try? await supabase
+                    .from("lock_sessions")
+                    .update(["is_active": false])
+                    .eq("user_id", value: userId.uuidString)
+                    .eq("is_active", value: true)
+                    .execute()
+            }
+        }
     }
 
     /// Remove shield for a single app token (after unlock approved).

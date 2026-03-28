@@ -39,16 +39,20 @@ struct SettingsView: View {
             .toolbarColorScheme(.dark, for: .navigationBar)
             .alert("Edit Name", isPresented: $editingName) {
                 TextField("Your name", text: $newName)
+                    .onChange(of: newName) { _ in
+                        if newName.count > 100 { newName = String(newName.prefix(100)) }
+                    }
                 Button("Cancel", role: .cancel) {}
                 Button("Save") {
-                    guard !newName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    Task { await authService.updateDisplayName(newName.trimmingCharacters(in: .whitespaces)) }
+                    let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    Task { await authService.updateDisplayName(trimmed) }
                 }
             }
             .alert("Remove All Locks?", isPresented: $showResetConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Remove All", role: .destructive) {
-                    shieldManager.deactivateShield()
+                    shieldManager.deactivateShield(userId: authService.currentUser?.id)
                 }
             } message: {
                 Text("This will unlock all blocked apps immediately. Your pact members will be notified.")

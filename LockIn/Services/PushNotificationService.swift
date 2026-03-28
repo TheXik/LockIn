@@ -28,7 +28,9 @@ final class PushNotificationService: NSObject, ObservableObject {
             }
             return granted
         } catch {
+            #if DEBUG
             print("Push notification permission error: \(error)")
+            #endif
             return false
         }
     }
@@ -50,14 +52,18 @@ final class PushNotificationService: NSObject, ObservableObject {
     func didRegisterForRemoteNotifications(withDeviceToken tokenData: Data) {
         let token = tokenData.map { String(format: "%02.2hhx", $0) }.joined()
         deviceToken = token
+        #if DEBUG
         print("📱 APNs token: \(token)")
+        #endif
 
         // Persist token to Supabase
         Task { await savePushToken(token) }
     }
 
     func didFailToRegisterForRemoteNotifications(withError error: Error) {
+        #if DEBUG
         print("❌ Failed to register for push: \(error.localizedDescription)")
+        #endif
     }
 
     // MARK: - Save Token to Supabase
@@ -72,9 +78,13 @@ final class PushNotificationService: NSObject, ObservableObject {
                 .eq("id", value: userId.uuidString)
                 .execute()
 
+            #if DEBUG
             print("✅ Push token saved to Supabase")
+            #endif
         } catch {
+            #if DEBUG
             print("Failed to save push token: \(error)")
+            #endif
         }
     }
 
@@ -140,9 +150,11 @@ final class PushNotificationService: NSObject, ObservableObject {
         )
 
         UNUserNotificationCenter.current().add(request) { error in
+            #if DEBUG
             if let error {
                 print("Local notification error: \(error)")
             }
+            #endif
         }
     }
 }

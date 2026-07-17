@@ -16,6 +16,21 @@ struct LockInApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if let name = ProcessInfo.processInfo.environment["LK_DEBUG_SCREEN"],
+               let screen = DebugScreen(rawValue: name) {
+                DebugRootView(screen: screen).preferredColorScheme(.dark)
+            } else {
+                mainFlow
+            }
+            #else
+            mainFlow
+            #endif
+        }
+    }
+
+    private var mainFlow: some View {
+        Group {
             Group {
                 if authService.isLoading {
                     SplashView()

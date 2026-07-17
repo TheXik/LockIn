@@ -13,49 +13,62 @@ struct JoinPactView: View {
         case success, full, alreadyMember, notFound
     }
 
+    private var isComplete: Bool { code.count >= 6 }
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
-                Spacer().frame(height: 20)
+            VStack(alignment: .leading, spacing: LKSpace.xl) {
+                Spacer().frame(height: LKSpace.lg)
 
-                Text("🔗")
-                    .font(.system(size: 56))
+                VStack(alignment: .leading, spacing: LKSpace.md) {
+                    Text("Drop the")
+                        .foregroundColor(.lockInText)
+                    + Text(" code.")
+                        .foregroundColor(.lockInPrimary)
+                }
+                .font(.system(size: 36, weight: .black))
+                .tracking(-1)
+                .minimumScaleFactor(0.7)
 
-                Text("Enter invite code")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.lockInText)
-
-                Text("Get this from your accountability partner")
-                    .font(.system(size: 15))
+                Text("Six characters from whoever invited you. Enter them and you’re in their pact.")
+                    .font(.lkBody)
                     .foregroundColor(.lockInTextSecondary)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 320, alignment: .leading)
 
-                // Code input
-                TextField("ABC123", text: $code)
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                    .multilineTextAlignment(.center)
-                    .padding(16)
-                    .background(Color.lockInSurface)
-                    .cornerRadius(14)
+                // ── Code input — big mono, lights up when complete ──
+                TextField("", text: $code, prompt: Text("ABC123").foregroundColor(.lockInTextTertiary))
+                    .font(.lkMono(34, .black))
+                    .tracking(8)
                     .foregroundColor(.lockInPrimary)
+                    .tint(.lockInPrimary)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
                     .focused($isFocused)
+                    .padding(LKSpace.lg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.lockInSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
+                    .lockInHairlineStroke(LKRadius.md)
+                    .lockInGlow(.lockInGlow, radius: isComplete ? 18 : 0, intensity: isComplete ? 0.4 : 0)
+                    .animation(.lkSmooth, value: isComplete)
                     .onChange(of: code) { newValue in
                         code = String(newValue.prefix(6)).uppercased()
                     }
+                    .padding(.top, LKSpace.sm)
 
                 // Status message
                 if let result = joinResult {
-                    HStack(spacing: 8) {
+                    HStack(spacing: LKSpace.sm) {
                         Image(systemName: result == .success ? "checkmark.circle.fill" : "xmark.circle.fill")
                         Text(resultMessage(result))
                     }
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.lkCallout)
                     .foregroundColor(result == .success ? .lockInSuccess : .lockInDanger)
                     .transition(.opacity.combined(with: .scale))
                 }
 
-                LockInButton("Join Pact", icon: "person.badge.plus", disabled: code.count < 6 || pactService.isLoading) {
+                LockInButton("Join Pact", icon: "person.badge.plus", disabled: !isComplete || pactService.isLoading) {
                     guard let userId = authService.currentUser?.id else { return }
                     Task {
                         let result = await pactService.joinPact(code: code, userId: userId)
@@ -74,11 +87,11 @@ struct JoinPactView: View {
                         }
                     }
                 }
-                .opacity(code.count < 6 ? 0.5 : 1)
 
                 Spacer()
             }
             .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .lockInScreenBackground()
             .navigationTitle("Join Pact")
             .navigationBarTitleDisplayMode(.inline)

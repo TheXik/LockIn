@@ -1,85 +1,73 @@
 import SwiftUI
 
-/// Card showing a pact group with member emoji avatars and status.
+/// Card showing a pact group — name, the people in it, and its invite code.
 struct PactCard: View {
     let pact: Pact
     let members: [PactMember]
 
+    private var openSlots: Int { max(0, 4 - members.count) }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(pact.name)
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.lockInText)
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            // ── Name leads, big and left. Chevron sits quietly. ──
+            HStack(alignment: .firstTextBaseline) {
+                Text(pact.name)
+                    .font(.lkHeadline)
+                    .tracking(-0.3)
+                    .foregroundColor(.lockInText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
-                    Text("\(members.count)/4 members")
-                        .font(.system(size: 13))
-                        .foregroundColor(.lockInTextSecondary)
-                }
-
-                Spacer()
+                Spacer(minLength: LKSpace.md)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.lockInTextTertiary)
             }
 
-            // Member emoji avatars — overlapping circles
-            if !members.isEmpty {
-                HStack(spacing: -8) {
-                    ForEach(members.prefix(4)) { member in
-                        let emoji = member.profile?.avatarEmoji ?? "🔥"
-                        Text(emoji)
-                            .font(.system(size: 18))
-                            .frame(width: 36, height: 36)
-                            .background(Color.lockInPrimary.opacity(0.1))
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(Color.lockInSurface, lineWidth: 2.5)
-                            )
-                    }
-
-                    // Empty slots
-                    let emptySlots = max(0, 4 - members.count)
-                    if emptySlots > 0 {
-                        ForEach(0..<emptySlots, id: \.self) { _ in
-                            Image(systemName: "plus")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.lockInTextTertiary)
-                                .frame(width: 36, height: 36)
-                                .background(Color.lockInSurfaceLight)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.lockInSurface, lineWidth: 2.5)
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.lockInPrimary.opacity(0.15), lineWidth: 1)
-                                )
-                        }
-                    }
+            // ── The people. Overlapping avatars, open seats shown as embers-to-be. ──
+            HStack(spacing: -10) {
+                ForEach(members.prefix(4)) { member in
+                    Text(member.profile?.avatarEmoji ?? "🔥")
+                        .font(.system(size: 18))
+                        .frame(width: 38, height: 38)
+                        .background(Color.lockInSurfaceHi)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.lockInSurface, lineWidth: 2.5))
                 }
+
+                ForEach(0..<openSlots, id: \.self) { _ in
+                    Circle()
+                        .fill(Color.lockInSurfaceLight)
+                        .frame(width: 38, height: 38)
+                        .overlay(
+                            Circle().strokeBorder(
+                                Color.lockInHairline,
+                                style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])
+                            )
+                        )
+                        .overlay(Circle().stroke(Color.lockInSurface, lineWidth: 2.5))
+                }
+
+                Spacer(minLength: LKSpace.md)
+
+                Text("\(members.count)/4")
+                    .font(.lkMono(13, .bold))
+                    .foregroundColor(.lockInTextSecondary)
             }
 
-            // Invite code — tap-to-copy style
-            HStack(spacing: 8) {
+            // ── Invite code, a warm mono line ──
+            HStack(spacing: LKSpace.sm) {
                 Image(systemName: "link")
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 10, weight: .bold))
                 Text(pact.inviteCode)
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .tracking(1)
+                    .font(.lkMono(13, .bold))
+                    .tracking(2)
             }
             .foregroundColor(.lockInTextTertiary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.lockInSurfaceLight)
-            .cornerRadius(8)
         }
         .lockInCard()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(pact.name), \(members.count) members, code \(pact.inviteCode)")
+        .accessibilityLabel("\(pact.name), \(members.count) of 4 members, invite code \(pact.inviteCode)")
     }
 }

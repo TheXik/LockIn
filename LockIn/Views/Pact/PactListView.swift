@@ -9,10 +9,28 @@ struct PactListView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: LKSpace.lg) {
+                    // ── Editorial header — big, left, type-led ──
+                    VStack(alignment: .leading, spacing: LKSpace.xs) {
+                        Text("Your")
+                            .foregroundColor(.lockInText)
+                        + Text(" people.")
+                            .foregroundColor(.lockInPrimary)
+                    }
+                    .font(.system(size: 40, weight: .black))
+                    .tracking(-1.2)
+                    .minimumScaleFactor(0.7)
+                    .padding(.top, LKSpace.sm)
+                    .padding(.bottom, LKSpace.xs)
+
                     if pactService.myPacts.isEmpty {
                         emptyState
                     } else {
+                        Text("\(pactService.myPacts.count) PACT\(pactService.myPacts.count == 1 ? "" : "S")")
+                            .font(.lkMicro)
+                            .tracking(1.5)
+                            .foregroundColor(.lockInTextTertiary)
+
                         ForEach(pactService.myPacts) { pact in
                             NavigationLink {
                                 PactDetailView(pact: pact)
@@ -24,14 +42,13 @@ struct PactListView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
                 .padding(.bottom, 40)
             }
             .refreshable {
                 guard let userId = authService.currentUser?.id else { return }
                 await pactService.fetchMyPacts(userId: userId)
             }
-            .navigationTitle("Pacts")
+            .navigationBarTitleDisplayMode(.inline)
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -45,8 +62,9 @@ struct PactListView: View {
                         }
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(LockInGradient.primary)
+                            .font(.system(size: 22))
+                            .foregroundStyle(LockInGradient.ember)
+                            .accessibilityLabel("Create or join a pact")
                     }
                 }
             }
@@ -58,40 +76,37 @@ struct PactListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 28) {
-            Spacer().frame(height: 48)
+        VStack(alignment: .leading, spacing: LKSpace.xl) {
+            Spacer().frame(height: LKSpace.lg)
 
-            ZStack {
-                Circle()
-                    .fill(Color.lockInPrimary.opacity(0.08))
-                    .frame(width: 80, height: 80)
+            // A lit flame — the one glowing thing on this screen.
+            Image(systemName: "flame.fill")
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(LockInGradient.ember)
+                .lockInGlow(.lockInGlow, radius: 18, intensity: 0.5)
 
-                Image(systemName: "person.2.fill")
-                    .font(.system(size: 32))
-                    .foregroundStyle(LockInGradient.primary)
-            }
-
-            VStack(spacing: 8) {
-                Text("No pacts yet")
-                    .font(.system(size: 22, weight: .bold))
+            VStack(alignment: .leading, spacing: LKSpace.md) {
+                Text("You can't lock in alone.")
+                    .font(.lkTitle)
+                    .tracking(-0.4)
                     .foregroundColor(.lockInText)
 
-                Text("A pact is your accountability group.\nCreate one and invite your co-founder or friend.")
-                    .font(.system(size: 15))
+                Text("A pact is two to four people who’ll actually tell you no. Start one and pull your co-founder in — or drop the code they sent you.")
+                    .font(.lkBody)
                     .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 320, alignment: .leading)
             }
 
-            VStack(spacing: 10) {
-                LockInButton("Create a Pact", icon: "plus") {
+            VStack(spacing: LKSpace.md) {
+                LockInButton("Start a Pact", icon: "plus") {
                     showCreatePact = true
                 }
-
-                LockInButton("Join with Code", icon: "link", style: .ghost) {
+                LockInButton("Join with a Code", icon: "link", style: .ghost) {
                     showJoinPact = true
                 }
             }
+            .padding(.top, LKSpace.sm)
         }
-        .padding(.horizontal, 16)
     }
 }

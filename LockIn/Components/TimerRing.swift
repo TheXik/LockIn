@@ -19,6 +19,7 @@ struct TimerRing: View {
     @State private var pulseScale: CGFloat = 1.0
     @State private var glowOpacity: Double = 0.3
     @State private var ringRotation: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let ringSize: CGFloat = 200
     private let orbitRadius: CGFloat = 128
@@ -70,6 +71,7 @@ struct TimerRing: View {
                     )
                     .frame(width: ringSize, height: ringSize)
                     .rotationEffect(.degrees(ringRotation - 90))
+                    .lockInGlow(.lockInGlow, radius: 18, intensity: 0.45)
             }
 
             // ── Center content ──────────────────────────
@@ -91,21 +93,21 @@ struct TimerRing: View {
 
                 if isActive {
                     Text("\(lockedAppCount)")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(.lkMono(38, .heavy))
+                        .foregroundColor(.lockInText)
                         .contentTransition(.numericText())
 
                     Text("LOCKED IN")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.lkMicro)
                         .foregroundColor(.lockInTextSecondary)
                         .tracking(3)
                 } else {
                     Text("0")
-                        .font(.system(size: 36, weight: .black, design: .rounded))
+                        .font(.lkMono(38, .heavy))
                         .foregroundColor(.lockInTextTertiary)
 
                     Text("READY")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.lkMicro)
                         .foregroundColor(.lockInTextTertiary)
                         .tracking(3)
                 }
@@ -147,6 +149,7 @@ struct TimerRing: View {
 
     private func startAnimations() {
         guard isActive else { return }
+        guard !reduceMotion else { return }
 
         // Flame pulse
         withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
@@ -195,7 +198,7 @@ private struct SquadOrbitBubble: View {
                     .overlay(
                         Circle()
                             .stroke(
-                                member.isLockedIn ? Color.lockInPrimary.opacity(0.4) : Color.white.opacity(0.06),
+                                member.isLockedIn ? Color.lockInPrimary.opacity(0.4) : Color.lockInHairline,
                                 lineWidth: 2
                             )
                     )

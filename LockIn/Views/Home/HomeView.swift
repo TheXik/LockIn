@@ -11,8 +11,9 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: LKSpace.xl) {
                     headerSection
+                    heroStatement
                     focusRingSection
                     statsRow
                     actionButtons
@@ -27,8 +28,8 @@ struct HomeView: View {
                         noPactsCTA
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.horizontal, LKSpace.xl)
+                .padding(.top, LKSpace.sm)
                 .padding(.bottom, 40)
             }
             .refreshable {
@@ -49,37 +50,40 @@ struct HomeView: View {
     // MARK: - Header (greeting + streak badge)
 
     private var headerSection: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(greetingText)
-                    .font(.system(size: 14))
-                    .foregroundColor(.lockInTextSecondary)
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(greetingText.uppercased())
+                    .font(.lkMicro)
+                    .tracking(1.6)
+                    .foregroundColor(.lockInTextTertiary)
 
                 Text(authService.currentUser?.displayName ?? "there")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(.system(size: 26, weight: .heavy))
+                    .tracking(-0.5)
+                    .foregroundColor(.lockInText)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
             }
-            Spacer()
+            Spacer(minLength: LKSpace.md)
 
-            // Streak badge
-            HStack(spacing: 5) {
-                Text("🔥")
-                    .font(.system(size: 18))
+            // Streak — a small mono figure, not an emoji badge
+            HStack(spacing: 6) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LockInGradient.ember)
                 Text("\(streakService.currentStreak)")
-                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .font(.lkMono(18, .heavy))
                     .foregroundColor(.lockInPrimary)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.lockInPrimary.opacity(0.1))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.lockInPrimary.opacity(0.2), lineWidth: 1)
-            )
-            .cornerRadius(24)
+            .padding(.horizontal, LKSpace.md)
+            .padding(.vertical, 7)
+            .background(Color.lockInPrimary.opacity(0.08))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.lockInPrimary.opacity(0.18), lineWidth: 1))
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(streakService.currentStreak) day streak")
         }
-        .padding(.top, 8)
+        .padding(.top, LKSpace.sm)
     }
 
     private var greetingText: String {
@@ -92,33 +96,58 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Hero statement (the editorial headline)
+
+    private var heroStatement: some View {
+        Group {
+            if shieldManager.isLockActive {
+                Text("You're\n").foregroundColor(.lockInText)
+                    + Text("locked in.").foregroundColor(.lockInPrimary)
+            } else if !pactService.myPacts.isEmpty {
+                Text("Ready when\n").foregroundColor(.lockInText)
+                    + Text("you are.").foregroundColor(.lockInPrimary)
+            } else {
+                Text("Focus is a\n").foregroundColor(.lockInText)
+                    + Text("team sport.").foregroundColor(.lockInPrimary)
+            }
+        }
+        .font(.system(size: 40, weight: .black))
+        .tracking(-1.2)
+        .lineSpacing(-2)
+        .fixedSize(horizontal: false, vertical: true)
+        .minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+    }
+
     // MARK: - Focus Ring
 
     private var focusRingSection: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
             TimerRing(
                 isActive: shieldManager.isLockActive,
                 lockedAppCount: shieldManager.selectedApps.applicationTokens.count,
                 streakDays: streakService.currentStreak,
                 squadMembers: buildSquadMembers()
             )
+            .frame(maxWidth: .infinity)
 
-            // Status text
+            // Status line — left aligned, editorial
             if shieldManager.isLockActive {
-                VStack(spacing: 4) {
-                    Text("Your squad can see you're focused")
-                        .font(.system(size: 13))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Your squad can see you're focused.")
+                        .font(.lkCallout)
                         .foregroundColor(.lockInTextSecondary)
 
                     if let duration = shieldManager.lockDurationFormatted {
-                        Text("Locked for \(duration)")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(.lockInPrimary)
+                        (Text("Locked for ").foregroundColor(.lockInTextSecondary)
+                            + Text(duration).foregroundColor(.lockInPrimary))
+                            .font(.lkMono(14, .semibold))
                     }
                 }
             } else {
-                Text("Lock apps to start your focus session")
-                    .font(.system(size: 13))
+                Text("Lock the apps that own you to start a session.")
+                    .font(.lkCallout)
                     .foregroundColor(.lockInTextTertiary)
             }
         }
@@ -127,12 +156,20 @@ struct HomeView: View {
     // MARK: - Stats Row
 
     private var statsRow: some View {
-        HStack(spacing: 0) {
-            StatPill(icon: "shield.fill", value: "\(shieldManager.selectedApps.applicationTokens.count)", label: "Blocked")
-            StatDivider()
-            StatPill(icon: "flame.fill", value: "\(streakService.currentStreak)d", label: "Streak")
-            StatDivider()
-            StatPill(icon: "hand.raised.fill", value: "\(unlockRequestService.myRequests.filter { $0.status == .denied }.count)", label: "Resisted")
+        HStack(alignment: .top, spacing: LKSpace.xxl) {
+            StatBlock(
+                value: "\(shieldManager.selectedApps.applicationTokens.count)",
+                label: "Blocked"
+            )
+            StatBlock(
+                value: "\(streakService.currentStreak)",
+                label: "Day streak"
+            )
+            StatBlock(
+                value: "\(unlockRequestService.myRequests.filter { $0.status == .denied }.count)",
+                label: "Resisted"
+            )
+            Spacer(minLength: 0)
         }
         .lockInCard()
     }
@@ -146,7 +183,7 @@ struct HomeView: View {
                     showUnlockRequestSheet = true
                 }
             } else if !pactService.myPacts.isEmpty {
-                LockInButton("Lock In 🔥") {
+                LockInButton("Lock In", icon: "flame.fill") {
                     NotificationCenter.default.post(name: .switchToLockTab, object: nil)
                 }
             }
@@ -156,29 +193,26 @@ struct HomeView: View {
     // MARK: - Pending Requests Banner
 
     private var pendingRequestsBanner: some View {
-        Button {
+        let count = unlockRequestService.pendingRequests.count
+        return Button {
             NotificationCenter.default.post(name: .switchToRequestsTab, object: nil)
         } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Color.lockInDanger.opacity(0.12))
-                        .frame(width: 44, height: 44)
-
-                    Image(systemName: "bell.badge.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(LockInGradient.primary)
-                }
+            HStack(spacing: LKSpace.lg) {
+                // The count is the accent — a big mono figure, not an icon-in-a-box
+                Text("\(count)")
+                    .font(.lkMono(30, .heavy))
+                    .foregroundStyle(LockInGradient.ember)
+                    .contentTransition(.numericText())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(unlockRequestService.pendingRequests.count) unlock request\(unlockRequestService.pendingRequests.count == 1 ? "" : "s")")
-                        .font(.system(size: 16, weight: .bold))
+                    Text(count == 1 ? "unlock request" : "unlock requests")
+                        .font(.lkBodyStrong)
                         .foregroundColor(.lockInText)
-                    Text("Your squad needs you")
-                        .font(.system(size: 13))
+                    Text("Your squad is waiting on you.")
+                        .font(.lkCaption)
                         .foregroundColor(.lockInTextSecondary)
                 }
-                Spacer()
+                Spacer(minLength: LKSpace.sm)
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
@@ -186,24 +220,24 @@ struct HomeView: View {
             }
             .lockInCard()
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.lockInPrimary.opacity(0.25), lineWidth: 1)
+                RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
+                    .stroke(Color.lockInPrimary.opacity(0.22), lineWidth: 1)
             )
         }
         .buttonStyle(ScaleButtonStyle())
-        .accessibilityLabel("\(unlockRequestService.pendingRequests.count) pending unlock requests. Tap to review.")
+        .accessibilityLabel("\(count) pending unlock request\(count == 1 ? "" : "s"). Tap to review.")
     }
 
     // MARK: - Pacts
 
     private var pactsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: LKSpace.md) {
             if !pactService.myPacts.isEmpty {
                 Text("YOUR PACTS")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.lkMicro)
                     .foregroundColor(.lockInTextTertiary)
-                    .tracking(1.5)
-                    .padding(.leading, 4)
+                    .tracking(2)
+                    .padding(.leading, LKSpace.xs)
 
                 ForEach(pactService.myPacts) { pact in
                     NavigationLink {
@@ -220,43 +254,27 @@ struct HomeView: View {
     // MARK: - No Pacts CTA
 
     private var noPactsCTA: some View {
-        VStack(spacing: 20) {
-            // Two connected emojis — the social hook
-            HStack(spacing: 0) {
-                Text("🔥")
-                    .font(.system(size: 32))
-                    .frame(width: 56, height: 56)
-                    .background(Color.lockInPrimary.opacity(0.08))
-                    .clipShape(Circle())
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            Text("Nobody holds\nyour key yet.")
+                .font(.system(size: 24, weight: .black))
+                .tracking(-0.6)
+                .lineSpacing(-1)
+                .foregroundColor(.lockInText)
+                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.7)
 
-                // Connection line
-                Rectangle()
-                    .fill(LockInGradient.primary)
-                    .frame(width: 30, height: 2)
-
-                Text("💪")
-                    .font(.system(size: 32))
-                    .frame(width: 56, height: 56)
-                    .background(Color.lockInSecondary.opacity(0.08))
-                    .clipShape(Circle())
-            }
-
-            VStack(spacing: 6) {
-                Text("Better together")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundColor(.lockInText)
-
-                Text("Create a pact with a friend.\nThey approve your unlocks — and you approve theirs.")
-                    .font(.system(size: 14))
-                    .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-            }
+            Text("Start a pact with a friend. They approve your unlocks — and you approve theirs. That accountability is the whole trick.")
+                .font(.lkBody)
+                .foregroundColor(.lockInTextSecondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
 
             LockInButton("Create a Pact", icon: "plus") {
                 NotificationCenter.default.post(name: .switchToPactsTab, object: nil)
             }
+            .padding(.top, LKSpace.xs)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
     }
 
@@ -281,38 +299,25 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Stat Pill
+// MARK: - Stat Block
 
-private struct StatPill: View {
-    let icon: String
+private struct StatBlock: View {
     let value: String
     let label: String
 
     var body: some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundStyle(LockInGradient.primary)
-
+        VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.system(size: 18, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .font(.lkMono(26, .heavy))
+                .foregroundColor(.lockInText)
 
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
+            Text(label.uppercased())
+                .font(.lkMicro)
                 .foregroundColor(.lockInTextTertiary)
-                .tracking(0.5)
+                .tracking(0.8)
         }
-        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct StatDivider: View {
-    var body: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.06))
-            .frame(width: 1, height: 36)
+        .accessibilityLabel("\(value) \(label)")
     }
 }
 

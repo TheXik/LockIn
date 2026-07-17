@@ -1,18 +1,36 @@
 import SwiftUI
 
 extension Color {
-    // MARK: - Brand Colors (Black/White/Yellow — BeReal × Duolingo vibe)
-    static let lockInPrimary = Color(hex: "FFD60A")       // Bright yellow — brand accent
-    static let lockInSecondary = Color(hex: "FF9F0A")     // Warm orange — secondary actions
-    static let lockInBackground = Color(hex: "000000")    // OLED black
-    static let lockInSurface = Color(hex: "141414")       // Card background
-    static let lockInSurfaceLight = Color(hex: "1C1C1E")  // Elevated surface
-    static let lockInSuccess = Color(hex: "30D158")       // Green
-    static let lockInWarning = Color(hex: "FF9F0A")       // Orange — distinct from primary
-    static let lockInDanger = Color(hex: "FF453A")        // Red
-    static let lockInText = Color.white
-    static let lockInTextSecondary = Color(hex: "8E8E93") // System gray
-    static let lockInTextTertiary = Color(hex: "636366")  // Dimmer gray for hints
+    // MARK: - Brand Colors — "Ember": warm, layered, glowing dark.
+    // Every competitor ships cold/clinical dark. LockIn is a hearth you keep lit
+    // with your people. Nothing here is pure #000 or pure #FFF — the warmth is
+    // the differentiator. Token NAMES are stable (33 files depend on them);
+    // only the values evolved.
+
+    // Accent — the ember system
+    static let lockInPrimary = Color(hex: "FFD60A")       // brand yellow — the signal, unchanged
+    static let lockInSecondary = Color(hex: "FF8A34")     // ember orange — warmer than before
+    static let lockInEmber = Color(hex: "FF5E1F")         // deep ember — gradient tail
+    static let lockInGlow = Color(hex: "FFB020")          // the glow material
+
+    // Backgrounds — warm near-black, layered for real depth
+    static let lockInBackground = Color(hex: "0B0A09")    // warm near-black base
+    static let lockInSurface = Color(hex: "17140F")       // card
+    static let lockInSurfaceLight = Color(hex: "211C14")  // elevated
+    static let lockInSurfaceHi = Color(hex: "2C2519")     // pressed / highest
+
+    // Text — warm off-white, warm grays (not the cold system grays)
+    static let lockInText = Color(hex: "F7F4ED")          // warm off-white
+    static let lockInTextSecondary = Color(hex: "ABA398") // warm gray
+    static let lockInTextTertiary = Color(hex: "8A8175")  // warm dim — lifted for WCAG AA (~4.8:1)
+
+    // Semantic — warmed to sit in the ember world
+    static let lockInSuccess = Color(hex: "34D373")       // green
+    static let lockInWarning = Color(hex: "FFB020")       // amber
+    static let lockInDanger = Color(hex: "FF5A47")        // warm red
+
+    // Hairline — warm, not a cold white line
+    static let lockInHairline = Color(hex: "FFE8C2").opacity(0.08)
 
     // MARK: - Hex Init
     init(hex: String) {

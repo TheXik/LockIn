@@ -4,16 +4,27 @@ extension View {
     func lockInCard() -> some View {
         self
             .padding(20)
-            .background(Color.lockInSurface)
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            .background(
+                // Top-lit warm surface — reads as elevated, not a flat rectangle.
+                LinearGradient(
+                    colors: [Color.lockInSurfaceLight, Color.lockInSurface],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
+            .clipShape(RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous))
+            .lockInHairlineStroke(LKRadius.lg)
+            .shadow(color: .black.opacity(0.35), radius: 16, y: 8)
     }
 
     func lockInScreenBackground() -> some View {
-        self.background(Color.lockInBackground.ignoresSafeArea())
+        self.background(
+            ZStack {
+                Color.lockInBackground
+                LockInGradient.hearth   // warm glow at the top of every screen
+            }
+            .ignoresSafeArea()
+        )
     }
 
     /// Shows a semi-transparent loading overlay when isLoading is true.

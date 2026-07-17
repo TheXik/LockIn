@@ -16,7 +16,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: LKSpace.xl) {
+                    header
                     profileSection
                     streakStatsSection
                     notificationSection
@@ -26,15 +27,16 @@ struct SettingsView: View {
                     accountSection
 
                     Text("LockIn v1.0")
-                        .font(.system(size: 12))
+                        .font(.lkCaption)
                         .foregroundColor(.lockInTextTertiary)
-                        .padding(.top, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, LKSpace.sm)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 40)
+                .padding(.horizontal, LKSpace.xl)
+                .padding(.top, LKSpace.sm)
+                .padding(.bottom, LKSpace.xxxl)
             }
-            .navigationTitle("Settings")
+            .navigationBarHidden(true)
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .alert("Edit Name", isPresented: $editingName) {
@@ -68,24 +70,56 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Header — editorial, left-aligned, type-led (not a stock nav title).
+    private var header: some View {
+        VStack(alignment: .leading, spacing: LKSpace.xs) {
+            HStack(spacing: 6) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(LockInGradient.ember)
+                Text("YOUR HEARTH")
+                    .font(.lkMicro)
+                    .tracking(2)
+                    .foregroundColor(.lockInTextTertiary)
+            }
+
+            Text("Settings")
+                .font(.system(size: 40, weight: .black))
+                .tracking(-1.2)
+                .foregroundColor(.lockInText)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+        }
+        .padding(.top, LKSpace.sm)
+    }
+
+    // MARK: - Section label
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.lkMicro)
+            .tracking(1.6)
+            .foregroundColor(.lockInTextTertiary)
+    }
+
     // MARK: - Profile
     private var profileSection: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: LKSpace.lg) {
             let emoji = authService.currentUser?.avatarEmoji ?? "🔥"
 
             Text(emoji)
-                .font(.system(size: 24))
-                .frame(width: 48, height: 48)
-                .background(Color.lockInPrimary.opacity(0.12))
+                .font(.system(size: 26))
+                .frame(width: 52, height: 52)
+                .background(LockInGradient.subtle)
                 .clipShape(Circle())
+                .overlay(Circle().stroke(Color.lockInHairline, lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(authService.currentUser?.displayName ?? "User")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.lkHeadline)
                     .foregroundColor(.lockInText)
 
                 Text("Signed in with Apple")
-                    .font(.system(size: 13))
+                    .font(.lkCaption)
                     .foregroundColor(.lockInTextSecondary)
             }
 
@@ -96,13 +130,15 @@ struct SettingsView: View {
                 editingName = true
             } label: {
                 Text("Edit")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.lkCallout)
                     .foregroundColor(.lockInPrimary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.lockInPrimary.opacity(0.1))
-                    .cornerRadius(8)
+                    .padding(.horizontal, LKSpace.md)
+                    .padding(.vertical, 7)
+                    .background(LockInGradient.subtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.lockInPrimary.opacity(0.35), lineWidth: 1))
             }
+            .accessibilityLabel("Edit name")
         }
         .lockInCard()
         .accessibilityElement(children: .combine)
@@ -110,87 +146,71 @@ struct SettingsView: View {
 
     // MARK: - Streak Stats
     private var streakStatsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("YOUR STATS")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            sectionLabel("YOUR STATS")
 
             HStack(spacing: 0) {
-                VStack(spacing: 4) {
-                    Text("\(streakService.currentStreak)")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(.lockInPrimary)
-                    Text("Current\nStreak")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.lockInTextTertiary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
+                statColumn(
+                    value: streakService.currentStreak,
+                    label: "Current\nStreak",
+                    color: .lockInPrimary,
+                    lit: streakService.currentStreak > 0
+                )
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(width: 1, height: 36)
+                statDivider
 
-                VStack(spacing: 4) {
-                    Text("\(streakService.longestStreak)")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(.lockInSecondary)
-                    Text("Longest\nStreak")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.lockInTextTertiary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
+                statColumn(
+                    value: streakService.longestStreak,
+                    label: "Longest\nStreak",
+                    color: .lockInSecondary,
+                    lit: false
+                )
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.06))
-                    .frame(width: 1, height: 36)
+                statDivider
 
-                VStack(spacing: 4) {
-                    Text("\(streakService.totalLockDays)")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(.lockInSuccess)
-                    Text("Total\nDays")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.lockInTextTertiary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
+                statColumn(
+                    value: streakService.totalLockDays,
+                    label: "Total\nDays",
+                    color: .lockInSuccess,
+                    lit: false
+                )
             }
         }
         .lockInCard()
     }
 
+    private func statColumn(value: Int, label: String, color: Color, lit: Bool) -> some View {
+        VStack(spacing: LKSpace.xs) {
+            Text("\(value)")
+                .font(.lkMono(30, .heavy))
+                .foregroundColor(color)
+                // The one lit element on this screen: a live streak reads as ember.
+                .modifier(ConditionalGlow(active: lit))
+            Text(label)
+                .font(.lkMicro)
+                .foregroundColor(.lockInTextTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var statDivider: some View {
+        Rectangle()
+            .fill(Color.lockInHairline)
+            .frame(width: 1, height: 40)
+    }
+
     // MARK: - Notifications
     private var notificationSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("NOTIFICATIONS")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            sectionLabel("NOTIFICATIONS")
 
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill((pushService.isPermissionGranted ? Color.lockInSuccess : Color.lockInWarning).opacity(0.12))
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: pushService.isPermissionGranted ? "bell.badge.fill" : "bell.slash")
-                        .font(.system(size: 15))
-                        .foregroundColor(pushService.isPermissionGranted ? .lockInSuccess : .lockInWarning)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(pushService.isPermissionGranted ? "Push Notifications Active" : "Notifications Disabled")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.lockInText)
-                    Text(pushService.isPermissionGranted ? "You'll be notified when squad members need you" : "Enable to get unlock request alerts")
-                        .font(.system(size: 13))
-                        .foregroundColor(.lockInTextSecondary)
-                }
-                Spacer()
-            }
+            statusRow(
+                icon: pushService.isPermissionGranted ? "bell.badge.fill" : "bell.slash",
+                tint: pushService.isPermissionGranted ? .lockInSuccess : .lockInWarning,
+                title: pushService.isPermissionGranted ? "Push Notifications Active" : "Notifications Disabled",
+                subtitle: pushService.isPermissionGranted ? "You'll be notified when squad members need you" : "Enable to get unlock request alerts"
+            )
 
             if !pushService.isPermissionGranted {
                 LockInButton("Enable Notifications", icon: "bell.badge", style: .secondary) {
@@ -203,33 +223,15 @@ struct SettingsView: View {
 
     // MARK: - Screen Time
     private var screenTimeSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("SCREEN TIME")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            sectionLabel("SCREEN TIME")
 
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(statusColor.opacity(0.12))
-                        .frame(width: 36, height: 36)
-
-                    Image(systemName: statusIcon)
-                        .font(.system(size: 15))
-                        .foregroundColor(statusColor)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(statusTitle)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.lockInText)
-                    Text(statusSubtitle)
-                        .font(.system(size: 13))
-                        .foregroundColor(.lockInTextSecondary)
-                }
-                Spacer()
-            }
+            statusRow(
+                icon: statusIcon,
+                tint: statusColor,
+                title: statusTitle,
+                subtitle: statusSubtitle
+            )
 
             if case .notDetermined = screenTimeAuth.authorizationStatus {
                 LockInButton("Allow Access", icon: "checkmark.shield", style: .secondary) {
@@ -238,6 +240,30 @@ struct SettingsView: View {
             }
         }
         .lockInCard()
+    }
+
+    // A shared status row — a live badge + two lines of state, left-aligned.
+    private func statusRow(icon: String, tint: Color, title: String, subtitle: String) -> some View {
+        HStack(spacing: LKSpace.md) {
+            ZStack {
+                Circle()
+                    .fill(tint.opacity(0.14))
+                    .frame(width: 40, height: 40)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(tint)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.lkBodyStrong)
+                    .foregroundColor(.lockInText)
+                Text(subtitle)
+                    .font(.lkCaption)
+                    .foregroundColor(.lockInTextSecondary)
+            }
+            Spacer()
+        }
     }
 
     private var statusIcon: String {
@@ -277,30 +303,26 @@ struct SettingsView: View {
 
     // MARK: - Danger Zone
     private var dangerSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("DANGER ZONE")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            sectionLabel("DANGER ZONE")
 
             Button { showResetConfirmation = true } label: {
-                HStack(spacing: 12) {
+                HStack(spacing: LKSpace.md) {
                     ZStack {
                         Circle()
-                            .fill(Color.lockInDanger.opacity(0.12))
-                            .frame(width: 36, height: 36)
-
+                            .fill(Color.lockInDanger.opacity(0.14))
+                            .frame(width: 40, height: 40)
                         Image(systemName: "lock.open.fill")
-                            .font(.system(size: 15))
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.lockInDanger)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Remove All Locks")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.lkBodyStrong)
                             .foregroundColor(.lockInDanger)
                         Text("Pact members will be notified")
-                            .font(.system(size: 13))
+                            .font(.lkCaption)
                             .foregroundColor(.lockInTextSecondary)
                     }
                     Spacer()
@@ -308,46 +330,27 @@ struct SettingsView: View {
             }
         }
         .lockInCard()
+        .overlay(
+            RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
+                .stroke(Color.lockInDanger.opacity(0.20), lineWidth: 1)
+        )
     }
 
     // MARK: - Legal
     private var legalSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("LEGAL")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
+        VStack(alignment: .leading, spacing: LKSpace.md) {
+            sectionLabel("LEGAL")
 
-            Button { showPrivacyPolicy = true } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "hand.raised.fill")
-                        .font(.system(size: 15))
-                        .foregroundColor(.lockInTextSecondary)
-                        .frame(width: 24)
-                    Text("Privacy Policy")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.lockInText)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.lockInTextTertiary)
-                }
+            linkRow(icon: "hand.raised.fill", title: "Privacy Policy") {
+                showPrivacyPolicy = true
             }
 
-            Button { showTerms = true } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "doc.text.fill")
-                        .font(.system(size: 15))
-                        .foregroundColor(.lockInTextSecondary)
-                        .frame(width: 24)
-                    Text("Terms of Service")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.lockInText)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.lockInTextTertiary)
-                }
+            Rectangle()
+                .fill(Color.lockInHairline)
+                .frame(height: 1)
+
+            linkRow(icon: "doc.text.fill", title: "Terms of Service") {
+                showTerms = true
             }
         }
         .lockInCard()
@@ -359,22 +362,56 @@ struct SettingsView: View {
         }
     }
 
+    private func linkRow(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: LKSpace.md) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.lockInTextSecondary)
+                    .frame(width: 24)
+                Text(title)
+                    .font(.lkCallout)
+                    .foregroundColor(.lockInText)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.lockInTextTertiary)
+            }
+        }
+    }
+
     // MARK: - Account
     private var accountSection: some View {
         Button { showSignOutConfirmation = true } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: LKSpace.md) {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.system(size: 15))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(.lockInTextSecondary)
                     .frame(width: 24)
 
                 Text("Sign Out")
-                    .font(.system(size: 15, weight: .medium))
+                    .font(.lkCallout)
                     .foregroundColor(.lockInTextSecondary)
 
                 Spacer()
             }
         }
         .lockInCard()
+    }
+}
+
+// MARK: - Conditional glow
+
+/// Applies the flame glow only when active — keeps the "one lit element" rule
+/// honest and respects Reduce Motion by never animating the glow in.
+private struct ConditionalGlow: ViewModifier {
+    let active: Bool
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if active {
+            content.lockInGlow(.lockInGlow, radius: 16, intensity: 0.55)
+        } else {
+            content
+        }
     }
 }

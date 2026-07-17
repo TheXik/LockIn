@@ -35,23 +35,26 @@ struct LockInButton: View {
             generator.impactOccurred()
             action()
         }) {
-            HStack(spacing: 8) {
+            HStack(spacing: LKSpace.sm) {
                 if let icon {
                     Image(systemName: icon)
                         .font(.system(size: 16, weight: .semibold))
                 }
                 Text(title)
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.lkBodyStrong)
+                    .tracking(-0.2)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 15)
-            .background(backgroundView)
+            .padding(.vertical, 16)
             .foregroundColor(isDisabled ? .lockInTextTertiary : foregroundColor)
-            .cornerRadius(14)
+            .background(backgroundView)
+            .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(borderColor, lineWidth: style == .ghost ? 1.5 : 0)
+                RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                    .stroke(borderColor, lineWidth: strokeWidth)
             )
+            // Warm cast under the lit variants — tactile, not the full flame glow.
+            .shadow(color: shadowColor, radius: 14, y: 6)
         }
         .buttonStyle(ScaleButtonStyle())
         .allowsHitTesting(!isDisabled)
@@ -62,13 +65,18 @@ struct LockInButton: View {
     @ViewBuilder
     private var backgroundView: some View {
         if isDisabled {
-            Color.lockInSurfaceLight
+            Color.lockInSurface
         } else {
             switch style {
             case .primary:
-                LockInGradient.primary
+                LockInGradient.ember
             case .secondary:
-                Color.lockInSurfaceLight
+                // Top-lit warm surface so it reads as a real object, not a flat chip.
+                LinearGradient(
+                    colors: [Color.lockInSurfaceHi, Color.lockInSurfaceLight],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             case .danger:
                 Color.lockInDanger
             case .ghost:
@@ -79,16 +87,37 @@ struct LockInButton: View {
 
     private var foregroundColor: Color {
         switch style {
-        case .primary: return .black
+        case .primary: return .lockInBackground   // dark ink on the ember fill
         case .secondary: return .lockInText
-        case .danger: return .white
+        case .danger: return .lockInText
         case .ghost: return .lockInPrimary
         }
     }
 
     private var borderColor: Color {
-        if isDisabled { return .lockInTextTertiary.opacity(0.3) }
-        return style == .ghost ? Color.lockInPrimary.opacity(0.4) : .clear
+        if isDisabled { return .lockInHairline }
+        switch style {
+        case .secondary: return .lockInHairline
+        case .ghost: return .lockInPrimary.opacity(0.45)
+        default: return .clear
+        }
+    }
+
+    private var strokeWidth: CGFloat {
+        switch style {
+        case .ghost: return 1.5
+        case .secondary: return 1
+        default: return 0
+        }
+    }
+
+    private var shadowColor: Color {
+        guard !isDisabled else { return .clear }
+        switch style {
+        case .primary: return .lockInEmber.opacity(0.35)
+        case .danger: return .lockInDanger.opacity(0.30)
+        default: return .clear
+        }
     }
 }
 

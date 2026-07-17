@@ -8,6 +8,29 @@ struct MainTabView: View {
     @EnvironmentObject var screenTimeAuth: ScreenTimeAuthService
     @State private var selectedTab = 0
 
+    init() {
+        // Warm the stock tab bar into the Ember world: near-black glass, a warm
+        // hairline lip, dim-warm idle glyphs, ember on the selected tab.
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(Color.lockInBackground)
+        appearance.shadowColor = UIColor(Color.lockInHairline)
+
+        let selected = UIColor(Color.lockInPrimary)
+        let idle = UIColor(Color.lockInTextTertiary)
+        for item in [appearance.stackedLayoutAppearance,
+                     appearance.inlineLayoutAppearance,
+                     appearance.compactInlineLayoutAppearance] {
+            item.selected.iconColor = selected
+            item.selected.titleTextAttributes = [.foregroundColor: selected]
+            item.normal.iconColor = idle
+            item.normal.titleTextAttributes = [.foregroundColor: idle]
+        }
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             HomeView()

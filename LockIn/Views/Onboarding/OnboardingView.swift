@@ -1,17 +1,32 @@
 import SwiftUI
 
 /// First-launch onboarding: explains the concept, requests Screen Time, push notifications.
+/// "Ember" editorial treatment — each page is a left-aligned statement, not a centered carousel slide.
 struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
     @EnvironmentObject var screenTimeAuth: ScreenTimeAuthService
     @EnvironmentObject var pushService: PushNotificationService
     @State private var currentPage = 0
+    @State private var appear = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let totalPages = 4
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.lockInBackground.ignoresSafeArea()
+
+            // Warm ember wash, low-left — the hearth. Asymmetric on purpose.
+            RadialGradient(
+                colors: [Color.lockInEmber.opacity(0.20), Color.lockInGlow.opacity(0.05), .clear],
+                center: .init(x: 0.14, y: 0.70),
+                startRadius: 10,
+                endRadius: 460
+            )
+            .ignoresSafeArea()
+            .opacity(appear ? 1 : 0)
+
+            GrainOverlay().opacity(0.5).ignoresSafeArea().blendMode(.overlay)
 
             VStack(spacing: 0) {
                 // ── Page content ──────────────────────────
@@ -22,19 +37,21 @@ struct OnboardingView: View {
                     notificationsPage.tag(3)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.easeInOut(duration: 0.35), value: currentPage)
+                .animation(reduceMotion ? nil : .lkSmooth, value: currentPage)
 
-                // ── Page dots + button ───────────────────
-                VStack(spacing: 24) {
-                    // Page indicators
-                    HStack(spacing: 8) {
+                // ── Progress + button ────────────────────
+                VStack(spacing: LKSpace.xl) {
+                    // Progress bars — asymmetric, the active one stretched and lit
+                    HStack(spacing: LKSpace.sm) {
                         ForEach(0..<totalPages, id: \.self) { index in
                             Capsule()
-                                .fill(index == currentPage ? Color.lockInPrimary : Color.lockInTextTertiary.opacity(0.3))
-                                .frame(width: index == currentPage ? 24 : 8, height: 8)
-                                .animation(.spring(response: 0.3), value: currentPage)
+                                .fill(index == currentPage ? Color.lockInPrimary : Color.lockInTextTertiary.opacity(0.25))
+                                .frame(width: index == currentPage ? 26 : 8, height: 4)
+                                .animation(reduceMotion ? nil : .lkSnappy, value: currentPage)
                         }
+                        Spacer()
                     }
+                    .padding(.horizontal, 28)
 
                     // Action button
                     Button {
@@ -42,59 +59,91 @@ struct OnboardingView: View {
                     } label: {
                         Text(buttonTitle)
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundColor(.lockInBackground)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(Color.lockInPrimary)
-                            .cornerRadius(16)
+                            .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
                     }
-                    .padding(.horizontal, 24)
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 28)
 
                     // Skip (only on permissions pages)
                     if currentPage >= 2 {
                         Button {
                             if currentPage < totalPages - 1 {
-                                withAnimation { currentPage += 1 }
+                                withAnimation(reduceMotion ? nil : .lkSmooth) { currentPage += 1 }
                             } else {
                                 completeOnboarding()
                             }
                         } label: {
                             Text("Skip for now")
-                                .font(.system(size: 14, weight: .medium))
+                                .font(.lkCaption)
                                 .foregroundColor(.lockInTextTertiary)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.bottom, 50)
+                .padding(.bottom, 44)
             }
+            .opacity(appear ? 1 : 0)
         }
+        .onAppear {
+            withAnimation(reduceMotion ? nil : .lkSmooth.delay(0.05)) { appear = true }
+        }
+    }
+
+    // MARK: - Shared header
+
+    private func pageHeader(_ index: Int, glowFlame: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            HStack(spacing: 8) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(LockInGradient.ember)
+                    .lockInGlow(.lockInGlow, radius: glowFlame ? 10 : 0, intensity: glowFlame ? 0.5 : 0)
+                Text("LockIn")
+                    .font(.system(size: 17, weight: .heavy))
+                    .tracking(-0.3)
+                    .foregroundColor(.lockInText)
+            }
+            Spacer()
+            Text(String(format: "%02d / %02d", index + 1, totalPages))
+                .font(.lkMono(13, .semibold))
+                .foregroundColor(.lockInTextTertiary)
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 8)
     }
 
     // MARK: - Pages
 
     private var welcomePage: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            pageHeader(0, glowFlame: true)
 
-            // Animated emoji pair
-            HStack(spacing: 0) {
-                OnboardingOrb(emoji: "🔥", color: .lockInPrimary)
-                OnboardingConnectionLine()
-                OnboardingOrb(emoji: "💪", color: .lockInSecondary)
-            }
+            Spacer(minLength: LKSpace.xxl)
 
-            VStack(spacing: 12) {
-                Text("Your friend has\nthe key")
-                    .font(.system(size: 34, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
+            VStack(alignment: .leading, spacing: LKSpace.lg) {
+                (
+                    Text("Your friends\nhold the ")
+                        .foregroundColor(.lockInText)
+                    + Text("key.")
+                        .foregroundColor(.lockInPrimary)
+                )
+                .font(.system(size: 48, weight: .black))
+                .tracking(-1.4)
+                .lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.7)
 
-                Text("Lock your distracting apps.\nOnly your squad can unlock them.")
-                    .font(.system(size: 16))
+                Text("Lock the apps that eat your day. The only way back in is to ask the people who’ll actually tell you no.")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 320, alignment: .leading)
             }
+            .padding(.horizontal, 28)
 
             Spacer()
             Spacer()
@@ -102,140 +151,173 @@ struct OnboardingView: View {
     }
 
     private var howItWorksPage: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            pageHeader(1, glowFlame: false)
 
-            VStack(spacing: 24) {
-                OnboardingFeature(
-                    icon: "plus.app.fill",
-                    color: .lockInPrimary,
-                    title: "Pick apps to block",
-                    subtitle: "Choose TikTok, Instagram, Twitter — whatever kills your focus"
-                )
+            Spacer(minLength: LKSpace.xl)
 
-                OnboardingFeature(
-                    icon: "person.2.fill",
-                    color: .lockInSecondary,
-                    title: "Form a pact",
-                    subtitle: "Invite 1-3 friends. They hold you accountable (and you hold them)"
+            VStack(alignment: .leading, spacing: LKSpace.xxl) {
+                (
+                    Text("How it\n")
+                        .foregroundColor(.lockInText)
+                    + Text("works.")
+                        .foregroundColor(.lockInPrimary)
                 )
+                .font(.system(size: 42, weight: .black))
+                .tracking(-1.2)
+                .lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.7)
 
-                OnboardingFeature(
-                    icon: "flame.fill",
-                    color: .lockInSuccess,
-                    title: "Build your streak",
-                    subtitle: "Every day locked in adds to your streak. Break it? Your squad knows"
-                )
-
-                OnboardingFeature(
-                    icon: "lock.open.fill",
-                    color: .lockInWarning,
-                    title: "Need an app? Ask.",
-                    subtitle: "Send an unlock request. Your friend decides if it's worth it"
-                )
+                VStack(alignment: .leading, spacing: LKSpace.xl) {
+                    stepRow(1, "Pick your poison", "TikTok, Instagram, Twitter — whatever kills your focus.")
+                    stepRow(2, "Form a pact", "Invite one to three friends. You hold each other to it.")
+                    stepRow(3, "Keep the streak", "Every locked-in day counts. Break it and your squad sees.")
+                    stepRow(4, "Need in? Ask.", "Send an unlock request. A friend decides if it’s worth it.")
+                }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 28)
 
-            Spacer()
             Spacer()
         }
     }
 
-    private var screenTimePage: some View {
-        VStack(spacing: 32) {
-            Spacer()
+    private func stepRow(_ n: Int, _ title: String, _ subtitle: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: LKSpace.lg) {
+            Text(String(format: "%02d", n))
+                .font(.lkMono(15, .bold))
+                .foregroundColor(.lockInPrimary)
+                .frame(width: 26, alignment: .leading)
 
-            ZStack {
-                Circle()
-                    .fill(Color.lockInPrimary.opacity(0.08))
-                    .frame(width: 120, height: 120)
-
-                Image(systemName: "hourglass")
-                    .font(.system(size: 48))
-                    .foregroundStyle(LockInGradient.primary)
-            }
-
-            VStack(spacing: 12) {
-                Text("Enable Screen Time")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-
-                Text("LockIn uses Apple's Screen Time API to block apps at the OS level. No VPN tricks — real blocking that can't be bypassed.")
-                    .font(.system(size: 15))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.lkBodyStrong)
+                    .foregroundColor(.lockInText)
+                Text(subtitle)
+                    .font(.lkCallout)
                     .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 24)
+                    .lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
 
-            // Status badge
-            HStack(spacing: 8) {
-                Image(systemName: screenTimeStatusIcon)
-                    .foregroundColor(screenTimeStatusColor)
-                Text(screenTimeStatusText)
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(screenTimeStatusColor)
+    private var screenTimePage: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            pageHeader(2, glowFlame: false)
+
+            Spacer(minLength: LKSpace.xxl)
+
+            // The one lit element on this screen — the lock.
+            Image(systemName: "lock.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(LockInGradient.ember)
+                .lockInGlow(.lockInGlow, radius: 18, intensity: 0.45)
+                .padding(.horizontal, 28)
+                .padding(.bottom, LKSpace.xl)
+
+            VStack(alignment: .leading, spacing: LKSpace.lg) {
+                (
+                    Text("Real blocking.\n")
+                        .foregroundColor(.lockInText)
+                    + Text("No tricks.")
+                        .foregroundColor(.lockInPrimary)
+                )
+                .font(.system(size: 40, weight: .black))
+                .tracking(-1.2)
+                .lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.7)
+
+                Text("LockIn uses Apple’s Screen Time to block apps at the OS level. No VPN hacks — real blocking that can’t be swiped away.")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.lockInTextSecondary)
+                    .lineSpacing(3)
+                    .frame(maxWidth: 340, alignment: .leading)
+
+                statusChip(
+                    icon: screenTimeStatusIcon,
+                    text: screenTimeStatusText,
+                    color: screenTimeStatusColor
+                )
+                .padding(.top, LKSpace.xs)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(screenTimeStatusColor.opacity(0.1))
-            .cornerRadius(12)
+            .padding(.horizontal, 28)
 
-            Spacer()
             Spacer()
         }
     }
 
     private var notificationsPage: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        VStack(alignment: .leading, spacing: 0) {
+            pageHeader(3, glowFlame: false)
 
-            ZStack {
-                Circle()
-                    .fill(Color.lockInSecondary.opacity(0.08))
-                    .frame(width: 120, height: 120)
+            Spacer(minLength: LKSpace.xxl)
 
-                Image(systemName: "bell.badge.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(LockInGradient.primary)
-            }
+            // The one lit element on this screen — the bell.
+            Image(systemName: "bell.badge.fill")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(LockInGradient.ember)
+                .lockInGlow(.lockInGlow, radius: 18, intensity: 0.45)
+                .padding(.horizontal, 28)
+                .padding(.bottom, LKSpace.xl)
 
-            VStack(spacing: 12) {
-                Text("Stay in the loop")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+            VStack(alignment: .leading, spacing: LKSpace.lg) {
+                (
+                    Text("Don’t leave them\n")
+                        .foregroundColor(.lockInText)
+                    + Text("hanging.")
+                        .foregroundColor(.lockInPrimary)
+                )
+                .font(.system(size: 40, weight: .black))
+                .tracking(-1.2)
+                .lineSpacing(-2)
+                .fixedSize(horizontal: false, vertical: true)
+                .minimumScaleFactor(0.7)
 
-                Text("Get notified when your squad needs you to approve an unlock. Don't leave them hanging!")
-                    .font(.system(size: 15))
+                Text("A ping when your squad needs you to approve an unlock. Answer fast — someone’s counting on you.")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .padding(.horizontal, 24)
-            }
+                    .lineSpacing(3)
+                    .frame(maxWidth: 340, alignment: .leading)
 
-            // Status badge
-            HStack(spacing: 8) {
-                Image(systemName: pushService.isPermissionGranted ? "checkmark.circle.fill" : "bell.slash")
-                    .foregroundColor(pushService.isPermissionGranted ? .lockInSuccess : .lockInTextTertiary)
-                Text(pushService.isPermissionGranted ? "Notifications enabled" : "Tap below to enable")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(pushService.isPermissionGranted ? .lockInSuccess : .lockInTextTertiary)
+                statusChip(
+                    icon: pushService.isPermissionGranted ? "checkmark.circle.fill" : "bell.slash",
+                    text: pushService.isPermissionGranted ? "Notifications enabled" : "Tap below to enable",
+                    color: pushService.isPermissionGranted ? .lockInSuccess : .lockInTextTertiary
+                )
+                .padding(.top, LKSpace.xs)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background((pushService.isPermissionGranted ? Color.lockInSuccess : Color.lockInTextTertiary).opacity(0.1))
-            .cornerRadius(12)
+            .padding(.horizontal, 28)
 
-            Spacer()
             Spacer()
         }
+    }
+
+    // MARK: - Status chip
+
+    private func statusChip(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: LKSpace.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(color)
+            Text(text)
+                .font(.lkCallout)
+                .foregroundColor(color)
+        }
+        .padding(.horizontal, LKSpace.lg)
+        .padding(.vertical, LKSpace.md)
+        .background(color.opacity(0.10))
+        .clipShape(Capsule())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 
     // MARK: - Button Logic
 
     private var buttonTitle: String {
         switch currentPage {
-        case 0: return "Let's go"
+        case 0: return "Let’s go"
         case 1: return "Got it"
         case 2:
             if case .approved = screenTimeAuth.authorizationStatus {
@@ -251,18 +333,18 @@ struct OnboardingView: View {
     private func handleAction() {
         switch currentPage {
         case 0, 1:
-            withAnimation { currentPage += 1 }
+            withAnimation(reduceMotion ? nil : .lkSmooth) { currentPage += 1 }
 
         case 2:
             if case .approved = screenTimeAuth.authorizationStatus {
-                withAnimation { currentPage += 1 }
+                withAnimation(reduceMotion ? nil : .lkSmooth) { currentPage += 1 }
             } else {
                 Task {
                     await screenTimeAuth.requestAuthorization()
                     // Auto-advance if granted
                     if case .approved = screenTimeAuth.authorizationStatus {
                         try? await Task.sleep(nanoseconds: 500_000_000)
-                        withAnimation { currentPage += 1 }
+                        withAnimation(reduceMotion ? nil : .lkSmooth) { currentPage += 1 }
                     }
                 }
             }
@@ -318,82 +400,29 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Supporting Components
+// MARK: - Grain
 
-private struct OnboardingOrb: View {
-    let emoji: String
-    let color: Color
-    @State private var isAnimating = false
-
+/// A static film grain, drawn once. Kills the flat-gradient look and gives the
+/// dark a tactile, printed quality. Deterministic seed so it doesn't re-shuffle.
+private struct GrainOverlay: View {
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color.opacity(0.06))
-                .frame(width: 100, height: 100)
-                .scaleEffect(isAnimating ? 1.1 : 0.95)
-
-            Circle()
-                .fill(color.opacity(0.1))
-                .frame(width: 72, height: 72)
-
-            Text(emoji)
-                .font(.system(size: 36))
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) {
-                isAnimating = true
+        Canvas { context, size in
+            var seed: UInt64 = 88_172_645_463_325_252
+            func rand() -> Double {
+                seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17
+                return Double(seed % 1000) / 1000.0
+            }
+            let count = Int(size.width * size.height / 90)
+            for _ in 0..<count {
+                let x = rand() * size.width
+                let y = rand() * size.height
+                let a = 0.02 + rand() * 0.05
+                context.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                    with: .color(.white.opacity(a))
+                )
             }
         }
-    }
-}
-
-private struct OnboardingConnectionLine: View {
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(LockInGradient.primary)
-                .frame(width: 40, height: 3)
-                .blur(radius: 4)
-                .opacity(0.5)
-
-            Rectangle()
-                .fill(LockInGradient.primary)
-                .frame(width: 40, height: 2)
-        }
-        .padding(.horizontal, -10)
-    }
-}
-
-private struct OnboardingFeature: View {
-    let icon: String
-    let color: Color
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.12))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(color)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.lockInText)
-
-                Text(subtitle)
-                    .font(.system(size: 14))
-                    .foregroundColor(.lockInTextSecondary)
-                    .lineSpacing(2)
-            }
-
-            Spacer()
-        }
+        .allowsHitTesting(false)
     }
 }

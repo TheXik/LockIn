@@ -6,6 +6,7 @@ struct LockSetupView: View {
     @EnvironmentObject var screenTimeAuth: ScreenTimeAuthService
     @EnvironmentObject var shieldManager: ShieldManager
     @EnvironmentObject var pactService: PactService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showActivityPicker = false
     @State private var selectedSchedule: ScheduleOption = .always
     @State private var dailyLimit: Double = 30
@@ -39,7 +40,11 @@ struct LockSetupView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: LKSpace.lg) {
+                    // Editorial hero — the decision, not a settings header
+                    hero
+                        .padding(.bottom, LKSpace.sm)
+
                     // Screen Time permission
                     if case .notDetermined = screenTimeAuth.authorizationStatus {
                         permissionCard
@@ -72,9 +77,7 @@ struct LockSetupView: View {
                     if !shieldManager.selectedApps.applicationTokens.isEmpty
                         && !pactService.myPacts.isEmpty
                         && !shieldManager.isLockActive {
-                        LockInButton("Lock In 🔥") {
-                            Task { await activateLock() }
-                        }
+                        commitSection
                     }
 
                     // Deactivate
@@ -93,16 +96,17 @@ struct LockSetupView: View {
                 .padding(.bottom, 40)
             }
             .navigationTitle("Lock Apps")
+            .navigationBarTitleDisplayMode(.inline)
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .familyActivityPicker(
                 isPresented: $showActivityPicker,
                 selection: $shieldManager.selectedApps
             )
-            .alert("Locked In! 🔥", isPresented: $showConfirmation) {
+            .alert("Locked in", isPresented: $showConfirmation) {
                 Button("Let's go") {}
             } message: {
-                Text("Your apps are locked. Only your pact members can approve unlocks. Stay focused!")
+                Text("Your apps are locked. Only your pact members can approve unlocks. Stay focused.")
             }
             .loadingOverlay(isSaving, message: "Locking in...")
             .errorBanner(errorMessage) { errorMessage = nil }
@@ -114,223 +118,259 @@ struct LockSetupView: View {
         }
     }
 
-    // MARK: - How It Works (onboarding in context)
-    private var howItWorksCard: some View {
-        VStack(spacing: 18) {
-            Text("HOW LOCKING WORKS")
-                .font(.system(size: 11, weight: .bold))
+    // MARK: - Hero
+    private var hero: some View {
+        VStack(alignment: .leading, spacing: LKSpace.sm) {
+            Text("LOCK IN")
+                .font(.lkMicro)
+                .tracking(2)
                 .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 14) {
-                HowItWorksStep(
-                    num: 1,
-                    icon: "plus.app.fill",
-                    text: "Pick the apps you want to block",
-                    color: .lockInPrimary
-                )
-                HowItWorksStep(
-                    num: 2,
-                    icon: "lock.fill",
-                    text: "Hit \"Lock In\" — your apps are now blocked",
-                    color: .lockInSecondary
-                )
-                HowItWorksStep(
-                    num: 3,
-                    icon: "person.2.fill",
-                    text: "Need an app? Your pact members approve",
-                    color: .lockInSuccess
-                )
+            (
+                Text("Choose what\n")
+                    .foregroundColor(.lockInText)
+                + Text("owns you.")
+                    .foregroundColor(.lockInPrimary)
+            )
+            .font(.system(size: 40, weight: .black))
+            .tracking(-1.2)
+            .lineSpacing(-2)
+            .fixedSize(horizontal: false, vertical: true)
+            .minimumScaleFactor(0.7)
+
+            Text("Pick them. Commit. The only way back in is to ask your pact.")
+                .font(.lkCallout)
+                .foregroundColor(.lockInTextSecondary)
+                .lineSpacing(2)
+                .frame(maxWidth: 300, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - How It Works (editorial, type-led — no icon-square rows)
+    private var howItWorksCard: some View {
+        VStack(alignment: .leading, spacing: LKSpace.lg) {
+            Text("HOW IT WORKS")
+                .font(.lkMicro)
+                .tracking(2)
+                .foregroundColor(.lockInTextTertiary)
+
+            VStack(alignment: .leading, spacing: LKSpace.lg) {
+                howStep("01", "Pick the apps that own you.")
+                howStep("02", "Lock in. They vanish behind the shield.")
+                howStep("03", "Want one back? Your pact decides — not you.")
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
+    }
+
+    private func howStep(_ num: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: LKSpace.md) {
+            Text(num)
+                .font(.lkMono(16, .heavy))
+                .foregroundColor(.lockInPrimary)
+                .frame(width: 26, alignment: .leading)
+            Text(text)
+                .font(.lkBody)
+                .foregroundColor(.lockInText)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
     }
 
     // MARK: - Permission
     private var permissionCard: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Color.lockInPrimary.opacity(0.08))
-                    .frame(width: 64, height: 64)
+        VStack(alignment: .leading, spacing: LKSpace.md) {
+            Text("FIRST, A KEY")
+                .font(.lkMicro)
+                .tracking(2)
+                .foregroundColor(.lockInTextTertiary)
 
-                Image(systemName: "hourglass")
-                    .font(.system(size: 28))
-                    .foregroundStyle(LockInGradient.primary)
-            }
+            Text("Grant Screen Time")
+                .font(.lkTitle)
+                .foregroundColor(.lockInText)
 
-            VStack(spacing: 6) {
-                Text("Screen Time access needed")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.lockInText)
-
-                Text("LockIn uses Apple's Screen Time to block apps on your behalf. Your data stays on your device.")
-                    .font(.system(size: 14))
-                    .foregroundColor(.lockInTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-            }
+            Text("LockIn uses Apple's Screen Time to hold your apps shut. Your Screen Time data never leaves this device.")
+                .font(.lkCallout)
+                .foregroundColor(.lockInTextSecondary)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
 
             LockInButton("Allow Access", icon: "checkmark.shield") {
                 Task { await screenTimeAuth.requestAuthorization() }
             }
+            .padding(.top, LKSpace.xs)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
     }
 
     private var deniedCard: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 32))
-                .foregroundColor(.lockInDanger)
-
-            Text("Screen Time access denied")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(.lockInText)
-
-            Text("Go to Settings → Screen Time to enable access for LockIn.")
-                .font(.system(size: 14))
-                .foregroundColor(.lockInTextSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .lockInCard()
-    }
-
-    // MARK: - Active Lock
-    private var activeLockBanner: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.lockInPrimary.opacity(0.12))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(LockInGradient.primary)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("You're locked in")
-                    .font(.system(size: 16, weight: .bold))
+        VStack(alignment: .leading, spacing: LKSpace.sm) {
+            HStack(spacing: LKSpace.sm) {
+                Image(systemName: "xmark.octagon.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.lockInDanger)
+                Text("Access denied")
+                    .font(.lkBodyStrong)
                     .foregroundColor(.lockInText)
-                HStack(spacing: 4) {
-                    Text("\(shieldManager.selectedApps.applicationTokens.count) apps blocked")
-                    if let duration = shieldManager.lockDurationFormatted {
-                        Text("· \(duration)")
-                            .foregroundColor(.lockInPrimary)
-                    }
-                    Text("· Only your squad can unlock")
-                }
-                .font(.system(size: 13))
-                .foregroundColor(.lockInTextSecondary)
             }
-            Spacer()
+            Text("Open Settings → Screen Time to let LockIn back in.")
+                .font(.lkCallout)
+                .foregroundColor(.lockInTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.lockInPrimary.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
+                .stroke(Color.lockInDanger.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Active Lock (the one lit element on this screen)
+    private var activeLockBanner: some View {
+        let count = shieldManager.selectedApps.applicationTokens.count
+        return VStack(alignment: .leading, spacing: LKSpace.sm) {
+            HStack(spacing: LKSpace.sm) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LockInGradient.ember)
+                    .lockInGlow(.lockInGlow, radius: 12, intensity: 0.6)
+                Text("YOU'RE LOCKED IN")
+                    .font(.lkMicro)
+                    .tracking(2)
+                    .foregroundColor(.lockInPrimary)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: LKSpace.sm) {
+                Text("\(count)")
+                    .font(.lkMono(34, .heavy))
+                    .foregroundColor(.lockInText)
+                Text(count == 1 ? "app held" : "apps held")
+                    .font(.lkCallout)
+                    .foregroundColor(.lockInTextSecondary)
+                if let duration = shieldManager.lockDurationFormatted {
+                    Text("· \(duration)")
+                        .font(.lkMono(15, .semibold))
+                        .foregroundColor(.lockInPrimary)
+                }
+            }
+
+            Text("Only your pact can let you out.")
+                .font(.lkCaption)
+                .foregroundColor(.lockInTextTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .lockInCard()
+        .overlay(
+            RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
+                .stroke(Color.lockInPrimary.opacity(0.28), lineWidth: 1)
         )
     }
 
     // MARK: - App Selection
     private var appSelectionSection: some View {
-        VStack(spacing: 14) {
+        let count = shieldManager.selectedApps.applicationTokens.count +
+                    shieldManager.selectedApps.categoryTokens.count
+
+        return VStack(alignment: .leading, spacing: LKSpace.lg) {
             HStack {
                 Text("APPS TO LOCK")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.lkMicro)
+                    .tracking(2)
                     .foregroundColor(.lockInTextTertiary)
-                    .tracking(1.5)
                 Spacer()
                 if !shieldManager.selectedApps.applicationTokens.isEmpty {
                     Button("Clear") {
                         shieldManager.selectedApps = FamilyActivitySelection()
                     }
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.lkCaption)
                     .foregroundColor(.lockInDanger)
                 }
             }
 
-            let count = shieldManager.selectedApps.applicationTokens.count +
-                        shieldManager.selectedApps.categoryTokens.count
-
             if count > 0 {
-                HStack(spacing: 8) {
-                    Image(systemName: "app.badge.checkmark.fill")
-                        .foregroundStyle(LockInGradient.primary)
-                    Text("\(count) app\(count == 1 ? "" : "s") selected")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.lockInText)
+                HStack(alignment: .firstTextBaseline, spacing: LKSpace.sm) {
+                    Text("\(count)")
+                        .font(.lkMono(28, .heavy))
+                        .foregroundColor(.lockInPrimary)
+                    Text(count == 1 ? "app in the vault" : "apps in the vault")
+                        .font(.lkCallout)
+                        .foregroundColor(.lockInTextSecondary)
                     Spacer()
                 }
 
                 AppIconGrid(appTokens: shieldManager.selectedApps.applicationTokens)
             } else {
-                // Empty state
-                VStack(spacing: 10) {
-                    Image(systemName: "plus.app.fill")
-                        .font(.system(size: 28))
+                // Empty state with a real line of voice
+                VStack(alignment: .leading, spacing: LKSpace.xs) {
+                    Text("The vault is empty.")
+                        .font(.lkBodyStrong)
+                        .foregroundColor(.lockInText)
+                    Text("An empty vault changes nothing. Pick what's been running your day.")
+                        .font(.lkCallout)
                         .foregroundColor(.lockInTextTertiary)
-                    Text("No apps selected yet")
-                        .font(.system(size: 14))
-                        .foregroundColor(.lockInTextTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, LKSpace.xs)
             }
 
             LockInButton(
                 count > 0 ? "Change Selection" : "Choose Apps to Lock",
-                icon: "plus.app.fill",
+                icon: "square.grid.2x2.fill",
                 style: count > 0 ? .secondary : .primary
             ) {
                 showActivityPicker = true
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
     }
 
     // MARK: - Schedule
     private var scheduleSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: LKSpace.md) {
             Text("SCHEDULE")
-                .font(.system(size: 11, weight: .bold))
+                .font(.lkMicro)
+                .tracking(2)
                 .foregroundColor(.lockInTextTertiary)
-                .tracking(1.5)
 
             ForEach(ScheduleOption.allCases, id: \.self) { option in
+                let isSelected = selectedSchedule == option
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(reduceMotion ? nil : .lkSnappy) {
                         selectedSchedule = option
                     }
                 } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: LKSpace.md) {
                         Image(systemName: option.icon)
-                            .font(.system(size: 15))
-                            .foregroundColor(selectedSchedule == option ? .lockInPrimary : .lockInTextSecondary)
-                            .frame(width: 20)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(isSelected ? .lockInPrimary : .lockInTextSecondary)
+                            .frame(width: 22)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.rawValue)
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.lkBodyStrong)
                                 .foregroundColor(.lockInText)
                             Text(option.subtitle)
-                                .font(.system(size: 12))
+                                .font(.lkCaption)
                                 .foregroundColor(.lockInTextSecondary)
                         }
                         Spacer()
-                        Image(systemName: selectedSchedule == option ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(selectedSchedule == option ? .lockInPrimary : .lockInTextTertiary)
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 20))
+                            .foregroundColor(isSelected ? .lockInPrimary : .lockInTextTertiary)
                     }
-                    .padding(14)
-                    .background(selectedSchedule == option ? Color.lockInPrimary.opacity(0.08) : Color.lockInSurfaceLight)
-                    .cornerRadius(12)
+                    .padding(LKSpace.lg)
+                    .background(isSelected ? Color.lockInPrimary.opacity(0.08) : Color.lockInSurfaceLight)
+                    .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
                             .stroke(
-                                selectedSchedule == option ? Color.lockInPrimary.opacity(0.2) : Color.clear,
+                                isSelected ? Color.lockInPrimary.opacity(0.25) : Color.clear,
                                 lineWidth: 1
                             )
                     )
@@ -338,80 +378,106 @@ struct LockSetupView: View {
                 .buttonStyle(.plain)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
     }
 
     // MARK: - Daily Limit
     private var dailyLimitSection: some View {
-        VStack(spacing: 14) {
-            HStack {
+        VStack(alignment: .leading, spacing: LKSpace.md) {
+            HStack(alignment: .firstTextBaseline) {
                 Text("DAILY LIMIT")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.lkMicro)
+                    .tracking(2)
                     .foregroundColor(.lockInTextTertiary)
-                    .tracking(1.5)
                 Spacer()
-                Text("\(Int(dailyLimit)) min")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(.lockInPrimary)
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("\(Int(dailyLimit))")
+                        .font(.lkMono(30, .heavy))
+                        .foregroundColor(.lockInPrimary)
+                    Text("min")
+                        .font(.lkCaption)
+                        .foregroundColor(.lockInTextSecondary)
+                }
             }
 
             Text("Want more time? Request it from your squad.")
-                .font(.system(size: 13))
+                .font(.lkCaption)
                 .foregroundColor(.lockInTextSecondary)
 
             Slider(value: $dailyLimit, in: 5...120, step: 5)
                 .tint(.lockInPrimary)
 
             HStack {
-                Text("5 min").font(.system(size: 11)).foregroundColor(.lockInTextTertiary)
+                Text("5 min").font(.lkMicro).foregroundColor(.lockInTextTertiary)
                 Spacer()
-                Text("2 hours").font(.system(size: 11)).foregroundColor(.lockInTextTertiary)
+                Text("2 hours").font(.lkMicro).foregroundColor(.lockInTextTertiary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
+    }
+
+    // MARK: - Commit
+    private var commitSection: some View {
+        VStack(alignment: .leading, spacing: LKSpace.md) {
+            Text("No takebacks. Once you lock in, only your pact opens the door.")
+                .font(.lkCaption)
+                .foregroundColor(.lockInTextTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            LockInButton("Lock In", icon: "flame.fill") {
+                Task { await activateLock() }
+            }
+        }
     }
 
     // MARK: - No Pact Warning
     private var noPactWarning: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: LKSpace.md) {
             Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.lockInWarning)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: LKSpace.xs) {
                 Text("No pact yet")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.lkBodyStrong)
                     .foregroundColor(.lockInText)
                 Text("You need an accountability partner before you can lock apps.")
-                    .font(.system(size: 13))
+                    .font(.lkCaption)
                     .foregroundColor(.lockInTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .lockInCard()
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.lockInWarning.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
+                .stroke(Color.lockInWarning.opacity(0.22), lineWidth: 1)
         )
     }
 
     // MARK: - Lock-In Celebration
     private var lockInCelebration: some View {
         ZStack {
-            Color.black.opacity(0.8).ignoresSafeArea()
+            Color.lockInBackground.opacity(0.92).ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: LKSpace.lg) {
                 Image(systemName: "flame.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(LockInGradient.primary)
-                    .shadow(color: .lockInPrimary.opacity(0.5), radius: 20)
+                    .font(.system(size: 72, weight: .black))
+                    .foregroundStyle(LockInGradient.ember)
+                    .lockInGlow(.lockInGlow, radius: 28, intensity: 0.7)
 
                 Text("LOCKED IN")
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .tracking(4)
+                    .font(.system(size: 30, weight: .black))
+                    .tracking(6)
+                    .foregroundColor(.lockInText)
 
-                Text("🔥")
-                    .font(.system(size: 40))
+                Text("The door's shut. Go do the thing.")
+                    .font(.lkCallout)
+                    .foregroundColor(.lockInTextSecondary)
             }
-            .scaleEffect(showLockAnimation ? 1 : 0.5)
+            .scaleEffect(reduceMotion ? 1 : (showLockAnimation ? 1 : 0.5))
             .opacity(showLockAnimation ? 1 : 0)
         }
         .transition(.opacity)
@@ -464,45 +530,16 @@ struct LockSetupView: View {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
 
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+        withAnimation(reduceMotion ? nil : .lkBounce) {
             showLockAnimation = true
         }
 
         // Dismiss celebration after 1.5s
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeOut(duration: 0.3)) {
+            withAnimation(reduceMotion ? nil : .lkSmooth) {
                 showLockAnimation = false
             }
             showConfirmation = true
-        }
-    }
-}
-
-// MARK: - How It Works Step
-
-private struct HowItWorksStep: View {
-    let num: Int
-    let icon: String
-    let text: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.12))
-                    .frame(width: 36, height: 36)
-
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(color)
-            }
-
-            Text(text)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.lockInText)
-
-            Spacer()
         }
     }
 }

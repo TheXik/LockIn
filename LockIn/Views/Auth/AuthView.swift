@@ -3,174 +3,119 @@ import AuthenticationServices
 
 struct AuthView: View {
     @EnvironmentObject var authService: AuthService
-    @State private var showContent = false
-    @State private var currentTagline = 0
-
-    private let taglines = [
-        "Your friend has the key.",
-        "Lock apps. Build streaks.",
-        "Accountability, together.",
-    ]
+    @State private var appear = false
 
     var body: some View {
         ZStack {
-            // ── Background ──────────────────────────────
-            Color.black.ignoresSafeArea()
+            Color.lockInBackground.ignoresSafeArea()
 
-            // Warm radial glow — subtle, centered higher
+            // Warm ember wash, anchored low-left — the version Lukáš picked. The
+            // warmth is the whole point; asymmetric on purpose (centered = template).
             RadialGradient(
-                colors: [
-                    Color.lockInPrimary.opacity(0.07),
-                    Color.lockInSecondary.opacity(0.03),
-                    Color.clear
-                ],
-                center: .init(x: 0.5, y: 0.3),
-                startRadius: 30,
-                endRadius: 350
+                colors: [Color.lockInEmber.opacity(0.22), Color.lockInGlow.opacity(0.06), .clear],
+                center: .init(x: 0.14, y: 0.72),
+                startRadius: 10,
+                endRadius: 460
             )
             .ignoresSafeArea()
+            .opacity(appear ? 1 : 0)
 
-            VStack(spacing: 0) {
-                Spacer()
+            GrainOverlay().opacity(0.5).ignoresSafeArea().blendMode(.overlay)
 
-                // ── Logo + tagline ──────────────────────
-                VStack(spacing: 28) {
-                    // Social visual — two emojis connected
-                    HStack(spacing: 0) {
-                        EmojiOrb(emoji: "🔥", color: .lockInPrimary)
-                        ConnectionLine()
-                        EmojiOrb(emoji: "💪", color: .lockInSecondary)
-                    }
-                    .scaleEffect(showContent ? 1 : 0.5)
-                    .opacity(showContent ? 1 : 0)
+            VStack(alignment: .leading, spacing: 0) {
+                // ── Wordmark, top-left — a logotype, not a centered hero ──
+                HStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(LockInGradient.ember)
+                        .lockInGlow(.lockInGlow, radius: 10, intensity: 0.5)
+                    Text("LockIn")
+                        .font(.system(size: 19, weight: .heavy))
+                        .tracking(-0.3)
+                        .foregroundColor(.lockInText)
+                }
+                .padding(.top, 8)
 
-                    VStack(spacing: 10) {
-                        Text("LockIn")
-                            .font(.system(size: 42, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
+                Spacer(minLength: LKSpace.xxl)
 
-                        Text(taglines[currentTagline])
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(.lockInTextSecondary)
-                            .contentTransition(.opacity)
-                            .animation(.easeInOut(duration: 0.5), value: currentTagline)
-                    }
-                    .opacity(showContent ? 1 : 0)
+                // ── The statement IS the hero. Big, tight, left, editorial. ──
+                VStack(alignment: .leading, spacing: LKSpace.lg) {
+                    (
+                        Text("Your friends\nhold the ")
+                            .foregroundColor(.lockInText)
+                        + Text("key.")
+                            .foregroundColor(.lockInPrimary)
+                    )
+                    .font(.system(size: 52, weight: .black))
+                    .tracking(-1.6)
+                    .lineSpacing(-4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .offset(x: appear ? 0 : -12)
+                    .opacity(appear ? 1 : 0)
+
+                    Text("Lock the apps that own you. The only way back in is to ask the people who’ll actually tell you no.")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.lockInTextSecondary)
+                        .lineSpacing(3)
+                        .frame(maxWidth: 320, alignment: .leading)
+                        .opacity(appear ? 1 : 0)
                 }
 
                 Spacer()
 
-                // ── How it works ────────────────────────
-                VStack(spacing: 18) {
-                    StepRow(num: "1", icon: "lock.fill", text: "Lock your distracting apps", color: .lockInPrimary)
-                    StepRow(num: "2", icon: "person.2.fill", text: "Your friend approves unlocks", color: .lockInSecondary)
-                    StepRow(num: "3", icon: "flame.fill", text: "Build your streak together", color: .lockInSuccess)
-                }
-                .padding(.horizontal, 32)
-                .opacity(showContent ? 1 : 0)
-
-                Spacer()
-
-                // ── Sign in ─────────────────────────────
-                VStack(spacing: 14) {
+                // ── Sign in — anchored bottom, full width ──
+                VStack(alignment: .leading, spacing: LKSpace.md) {
                     SignInWithAppleButton(.signIn) { request in
                         request.requestedScopes = [.fullName, .email]
                     } onCompletion: { result in
                         Task { await authService.handleAppleSignIn(result) }
                     }
                     .signInWithAppleButtonStyle(.white)
-                    .frame(height: 54)
-                    .cornerRadius(16)
-                    .shadow(color: .white.opacity(0.05), radius: 10, y: 4)
+                    .frame(height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
 
-                    Text("No data leaves your device. Ever.")
-                        .font(.system(size: 12, weight: .medium))
+                    // Legally load-bearing — must stay true. Only Screen Time data is
+                    // device-only; profiles/pacts/tokens go to Supabase.
+                    Text("Your Screen Time data stays on your device.")
+                        .font(.lkCaption)
                         .foregroundColor(.lockInTextTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 50)
-                .opacity(showContent ? 1 : 0)
+                .opacity(appear ? 1 : 0)
             }
+            .padding(.horizontal, 28)
+            .padding(.bottom, 40)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.9, dampingFraction: 0.7).delay(0.15)) {
-                showContent = true
-            }
-            // Rotate taglines every 3 seconds
-            Timer.scheduledTimer(withTimeInterval: 3.5, repeats: true) { _ in
-                withAnimation {
-                    currentTagline = (currentTagline + 1) % taglines.count
-                }
-            }
+            withAnimation(.lkSmooth.delay(0.1)) { appear = true }
         }
     }
 }
 
-// MARK: - Supporting Views
+// MARK: - Grain
 
-private struct EmojiOrb: View {
-    let emoji: String
-    let color: Color
-
+/// A static film grain, drawn once. Kills the "flat AI gradient" flatness and
+/// gives the dark a tactile, printed quality. Deterministic seed so it doesn't
+/// re-shuffle on redraw.
+private struct GrainOverlay: View {
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color.opacity(0.08))
-                .frame(width: 80, height: 80)
-
-            Circle()
-                .fill(color.opacity(0.04))
-                .frame(width: 100, height: 100)
-
-            Text(emoji)
-                .font(.system(size: 36))
-        }
-    }
-}
-
-private struct ConnectionLine: View {
-    var body: some View {
-        ZStack {
-            // Glow
-            Rectangle()
-                .fill(LockInGradient.primary)
-                .frame(width: 36, height: 3)
-                .blur(radius: 4)
-                .opacity(0.5)
-
-            // Solid line
-            Rectangle()
-                .fill(LockInGradient.primary)
-                .frame(width: 36, height: 2)
-        }
-        .padding(.horizontal, -12) // Overlap into the orbs slightly
-    }
-}
-
-private struct StepRow: View {
-    let num: String
-    let icon: String
-    let text: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 16) {
-            // Number badge
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.12))
-                    .frame(width: 40, height: 40)
-
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(color)
+        Canvas { context, size in
+            var seed: UInt64 = 88_172_645_463_325_252
+            func rand() -> Double {
+                seed ^= seed << 13; seed ^= seed >> 7; seed ^= seed << 17
+                return Double(seed % 1000) / 1000.0
             }
-
-            Text(text)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.lockInText)
-
-            Spacer()
+            let count = Int(size.width * size.height / 90)
+            for _ in 0..<count {
+                let x = rand() * size.width
+                let y = rand() * size.height
+                let a = 0.02 + rand() * 0.05
+                context.fill(
+                    Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                    with: .color(.white.opacity(a))
+                )
+            }
         }
+        .allowsHitTesting(false)
     }
 }

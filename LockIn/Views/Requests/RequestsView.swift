@@ -3,6 +3,7 @@ import SwiftUI
 struct RequestsView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var unlockRequestService: UnlockRequestService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedTab = 0
     @State private var showUnlockRequestSheet = false
     @State private var confirmingApproval: UnlockRequest?
@@ -10,38 +11,30 @@ struct RequestsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented control
-                Picker("", selection: $selectedTab) {
-                    Text("Incoming").tag(0)
-                    Text("My Requests").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+            ScrollView {
+                VStack(alignment: .leading, spacing: LKSpace.xl) {
+                    header
+                    tabSwitcher
 
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if selectedTab == 0 {
-                            incomingRequests
-                        } else {
-                            myRequests
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    .padding(.bottom, 40)
-                }
-                .refreshable {
-                    guard let userId = authService.currentUser?.id else { return }
                     if selectedTab == 0 {
-                        await unlockRequestService.fetchPendingRequests(userId: userId)
+                        incomingRequests
                     } else {
-                        await unlockRequestService.fetchMyRequests(userId: userId)
+                        myRequests
                     }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, LKSpace.sm)
+                .padding(.bottom, 40)
+            }
+            .refreshable {
+                guard let userId = authService.currentUser?.id else { return }
+                if selectedTab == 0 {
+                    await unlockRequestService.fetchPendingRequests(userId: userId)
+                } else {
+                    await unlockRequestService.fetchMyRequests(userId: userId)
                 }
             }
-            .navigationTitle("Requests")
+            .navigationBarTitleDisplayMode(.inline)
             .lockInScreenBackground()
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {
@@ -50,7 +43,8 @@ struct RequestsView: View {
                         showUnlockRequestSheet = true
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.lockInPrimary)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(LockInGradient.ember)
                     }
                     .accessibilityLabel("New unlock request")
                 }
@@ -75,7 +69,7 @@ struct RequestsView: View {
                     confirmingApproval = nil
                 }
             } message: {
-                Text("This will let them use the app. Are you sure?")
+                Text("You're handing back the key. They get their app.")
             }
             .alert("Deny Unlock?", isPresented: .init(
                 get: { confirmingDenial != nil },
@@ -89,9 +83,64 @@ struct RequestsView: View {
                     confirmingDenial = nil
                 }
             } message: {
-                Text("Their app will stay locked.")
+                Text("The app stays locked. That's the whole point.")
             }
         }
+    }
+
+    // MARK: - Header
+    private var header: some View {
+        VStack(alignment: .leading, spacing: LKSpace.xs) {
+            Text("Requests")
+                .font(.system(size: 40, weight: .black))
+                .tracking(-1.2)
+                .foregroundColor(.lockInText)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+            Text("This is where the key changes hands.")
+                .font(.lkCallout)
+                .foregroundColor(.lockInTextSecondary)
+        }
+    }
+
+    // MARK: - Tab switcher
+    private var tabSwitcher: some View {
+        HStack(spacing: LKSpace.xl) {
+            tabButton("Incoming", index: 0, count: unlockRequestService.pendingRequests.count)
+            tabButton("Sent", index: 1, count: 0)
+            Spacer()
+        }
+    }
+
+    private func tabButton(_ title: String, index: Int, count: Int) -> some View {
+        Button {
+            if reduceMotion {
+                selectedTab = index
+            } else {
+                withAnimation(.lkSnappy) { selectedTab = index }
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.lkHeadline)
+                        .foregroundColor(selectedTab == index ? .lockInText : .lockInTextTertiary)
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.lkMono(12, .bold))
+                            .foregroundColor(.lockInBackground)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(LockInGradient.ember))
+                    }
+                }
+                Capsule()
+                    .fill(LockInGradient.ember)
+                    .frame(height: 2)
+                    .opacity(selectedTab == index ? 1 : 0)
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Incoming
@@ -99,22 +148,23 @@ struct RequestsView: View {
         Group {
             if unlockRequestService.pendingRequests.isEmpty {
                 emptyState(
-                    emoji: "✅",
-                    title: "All clear",
-                    subtitle: "No pending unlock requests from your pact."
+                    title: "Nobody's knocking.",
+                    subtitle: "When someone in your pact needs an app unlocked, the call lands here — and it's yours to make."
                 )
             } else {
-                ForEach(unlockRequestService.pendingRequests) { request in
-                    RequestCard(
-                        request: request,
-                        requesterName: "Pact Member", // TODO: resolve from profile
-                        onApprove: {
-                            confirmingApproval = request
-                        },
-                        onDeny: {
-                            confirmingDenial = request
-                        }
-                    )
+                VStack(spacing: LKSpace.lg) {
+                    ForEach(unlockRequestService.pendingRequests) { request in
+                        RequestCard(
+                            request: request,
+                            requesterName: "Pact Member", // TODO: resolve from profile
+                            onApprove: {
+                                confirmingApproval = request
+                            },
+                            onDeny: {
+                                confirmingDenial = request
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -125,61 +175,66 @@ struct RequestsView: View {
         Group {
             if unlockRequestService.myRequests.isEmpty {
                 emptyState(
-                    emoji: "🔒",
-                    title: "No requests",
-                    subtitle: "When you need to unlock an app, tap + to request."
+                    title: "You haven't asked.",
+                    subtitle: "Locked out of something you actually need? Tap + and make your case to the pact."
                 )
             } else {
-                ForEach(unlockRequestService.myRequests) { request in
-                    HStack(spacing: 14) {
-                        Image(systemName: "app.fill")
-                            .foregroundColor(.lockInPrimary)
+                VStack(spacing: LKSpace.md) {
+                    ForEach(unlockRequestService.myRequests) { request in
+                        HStack(alignment: .top, spacing: LKSpace.md) {
+                            VStack(alignment: .leading, spacing: LKSpace.xs) {
+                                Text(request.appIdentifier)
+                                    .font(.lkBodyStrong)
+                                    .foregroundColor(.lockInText)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(request.appIdentifier)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.lockInText)
+                                Text(request.reason ?? "No reason given")
+                                    .font(.lkCaption)
+                                    .foregroundColor(.lockInTextSecondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
 
-                            Text(request.reason ?? "No reason given")
-                                .font(.system(size: 13))
-                                .foregroundColor(.lockInTextSecondary)
+                            Spacer(minLength: LKSpace.sm)
+
+                            statusBadge(request.status)
                         }
-
-                        Spacer()
-
-                        statusBadge(request.status)
+                        .lockInCard()
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Request for \(request.appIdentifier), status: \(request.status.rawValue)")
                     }
-                    .lockInCard()
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Request for \(request.appIdentifier), status: \(request.status.rawValue)")
                 }
             }
         }
     }
 
     // MARK: - Helpers
-    private func emptyState(emoji: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: 12) {
-            Spacer().frame(height: 40)
-            Text(emoji).font(.system(size: 48))
+    private func emptyState(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: LKSpace.sm) {
             Text(title)
-                .font(.system(size: 18, weight: .bold))
+                .font(.system(size: 26, weight: .bold))
+                .tracking(-0.6)
                 .foregroundColor(.lockInText)
+                .fixedSize(horizontal: false, vertical: true)
             Text(subtitle)
-                .font(.system(size: 14))
+                .font(.lkCallout)
                 .foregroundColor(.lockInTextSecondary)
-                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 300, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, LKSpace.xxl)
     }
 
     private func statusBadge(_ status: UnlockRequest.Status) -> some View {
-        Text(status.rawValue.capitalized)
-            .font(.system(size: 11, weight: .bold))
+        Text(status.rawValue.uppercased())
+            .font(.lkMicro)
+            .tracking(0.8)
             .foregroundColor(statusColor(status))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(statusColor(status).opacity(0.15))
-            .cornerRadius(8)
+            .background(Capsule().fill(statusColor(status).opacity(0.14)))
+            .overlay(Capsule().stroke(statusColor(status).opacity(0.30), lineWidth: 1))
     }
 
     private func statusColor(_ status: UnlockRequest.Status) -> Color {

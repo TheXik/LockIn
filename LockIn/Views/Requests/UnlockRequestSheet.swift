@@ -17,107 +17,115 @@ struct UnlockRequestSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Text("🔓")
-                            .font(.system(size: 48))
+                VStack(alignment: .leading, spacing: LKSpace.xxl) {
+                    // ── Header — editorial, left-aligned, one accent word ──
+                    VStack(alignment: .leading, spacing: LKSpace.sm) {
+                        (
+                            Text("Ask for the ")
+                                .foregroundColor(.lockInText)
+                            + Text("key")
+                                .foregroundColor(.lockInPrimary)
+                            + Text(" back.")
+                                .foregroundColor(.lockInText)
+                        )
+                        .font(.system(size: 34, weight: .black))
+                        .tracking(-1.1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .minimumScaleFactor(0.7)
 
-                        Text("Request Unlock")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.lockInText)
-
-                        Text("Ask your pact to unlock an app for you.")
-                            .font(.system(size: 15))
+                        Text("Name the app and make your case. Your pact decides.")
+                            .font(.lkCallout)
                             .foregroundColor(.lockInTextSecondary)
+                            .frame(maxWidth: 300, alignment: .leading)
                     }
-                    .padding(.top, 12)
+                    .padding(.top, LKSpace.xs)
 
-                    // Select Pact
+                    // ── Which pact (only when there's a choice) ──
                     if pactService.myPacts.count > 1 {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("WHICH PACT?")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.lockInTextSecondary)
-                                .tracking(1.5)
+                        VStack(alignment: .leading, spacing: LKSpace.md) {
+                            eyebrow("WHICH PACT")
 
-                            ForEach(pactService.myPacts) { pact in
-                                Button {
-                                    selectedPact = pact
-                                } label: {
-                                    HStack {
-                                        Text(pact.name)
-                                            .font(.system(size: 15, weight: .medium))
-                                            .foregroundColor(.lockInText)
-                                        Spacer()
-                                        Image(systemName: selectedPact?.id == pact.id ? "checkmark.circle.fill" : "circle")
-                                            .foregroundColor(selectedPact?.id == pact.id ? .lockInPrimary : .lockInTextSecondary)
+                            VStack(spacing: LKSpace.sm) {
+                                ForEach(pactService.myPacts) { pact in
+                                    Button {
+                                        selectedPact = pact
+                                    } label: {
+                                        let isSelected = selectedPact?.id == pact.id
+                                        HStack {
+                                            Text(pact.name)
+                                                .font(.lkBodyStrong)
+                                                .foregroundColor(.lockInText)
+                                            Spacer()
+                                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                                .font(.system(size: 18, weight: .semibold))
+                                                .foregroundStyle(isSelected ? AnyShapeStyle(LockInGradient.ember) : AnyShapeStyle(Color.lockInTextTertiary))
+                                        }
+                                        .padding(LKSpace.lg)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                                                .fill(isSelected ? Color.lockInPrimary.opacity(0.10) : Color.lockInSurfaceLight)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                                                .stroke(isSelected ? Color.lockInPrimary.opacity(0.45) : Color.lockInHairline, lineWidth: 1)
+                                        )
                                     }
-                                    .padding(14)
-                                    .background(selectedPact?.id == pact.id ? Color.lockInPrimary.opacity(0.1) : Color.lockInSurfaceLight)
-                                    .cornerRadius(12)
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
-                        .lockInCard()
                     }
 
-                    // App name
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("WHICH APP?")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.lockInTextSecondary)
-                            .tracking(1.5)
-
-                        TextField("e.g. Instagram, Twitter, TikTok", text: $appName)
-                            .font(.system(size: 16))
-                            .padding(16)
-                            .background(Color.lockInSurfaceLight)
-                            .cornerRadius(12)
+                    // ── Which app ──
+                    VStack(alignment: .leading, spacing: LKSpace.md) {
+                        eyebrow("WHICH APP")
+                        TextField("Instagram, Twitter, TikTok…", text: $appName)
+                            .font(.lkBody)
                             .foregroundColor(.lockInText)
                             .autocorrectionDisabled()
+                            .inputField()
                     }
-                    .lockInCard()
 
-                    // Reason (optional)
-                    VStack(alignment: .leading, spacing: 10) {
+                    // ── Why (optional) ──
+                    VStack(alignment: .leading, spacing: LKSpace.md) {
                         HStack {
-                            Text("WHY?")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.lockInTextSecondary)
-                                .tracking(1.5)
+                            eyebrow("WHY")
                             Spacer()
-                            Text("Optional")
-                                .font(.system(size: 12))
+                            Text("optional")
+                                .font(.lkCaption)
                                 .foregroundColor(.lockInTextTertiary)
                         }
-
-                        TextField("e.g. Need to check a DM real quick", text: $reason)
-                            .font(.system(size: 16))
-                            .padding(16)
-                            .background(Color.lockInSurfaceLight)
-                            .cornerRadius(12)
+                        TextField("Need to check one DM, then I'm out", text: $reason)
+                            .font(.lkBody)
                             .foregroundColor(.lockInText)
+                            .inputField()
                     }
-                    .lockInCard()
 
-                    // Success state
+                    // ── Success state ──
                     if didSend {
-                        HStack(spacing: 10) {
+                        HStack(spacing: LKSpace.md) {
                             Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.lockInSuccess)
-                            Text("Request sent! Waiting for approval...")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(.lockInSuccess)
+                            Text("Sent. The ball's in their court now.")
+                                .font(.lkCallout)
+                                .foregroundColor(.lockInText)
+                            Spacer(minLength: 0)
                         }
-                        .padding(16)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.lockInSuccess.opacity(0.1))
-                        .cornerRadius(12)
+                        .padding(LKSpace.lg)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                                .fill(Color.lockInSuccess.opacity(0.10))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                                .stroke(Color.lockInSuccess.opacity(0.30), lineWidth: 1)
+                        )
+                        .transition(.opacity)
                     }
 
-                    // Send button
+                    // ── Send / Done ──
                     if !didSend {
                         LockInButton("Send Request", icon: "paperplane.fill", disabled: !canSend) {
                             Task { await sendRequest() }
@@ -152,6 +160,14 @@ struct UnlockRequestSheet: View {
         }
     }
 
+    // MARK: - Small pieces
+    private func eyebrow(_ text: String) -> some View {
+        Text(text)
+            .font(.lkMicro)
+            .tracking(1.8)
+            .foregroundColor(.lockInTextTertiary)
+    }
+
     private var sanitizedAppName: String {
         String(appName.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100))
     }
@@ -179,9 +195,25 @@ struct UnlockRequestSheet: View {
         )
 
         if success {
-            didSend = true
+            withAnimation(.lkSnappy) { didSend = true }
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         }
+    }
+}
+
+// MARK: - Input field styling
+private extension View {
+    func inputField() -> some View {
+        self
+            .padding(LKSpace.lg)
+            .background(
+                RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                    .fill(Color.lockInSurfaceLight)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous)
+                    .stroke(Color.lockInHairline, lineWidth: 1)
+            )
     }
 }

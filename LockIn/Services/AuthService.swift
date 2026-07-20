@@ -138,4 +138,19 @@ final class AuthService: ObservableObject {
         isAuthenticated = false
         currentUser = nil
     }
+
+    /// Permanently deletes the account and ALL associated data — profile, pact
+    /// memberships, lock sessions, unlock requests, push token, and the auth user.
+    /// Required by App Store guideline 5.1.1(v). Irreversible. Throws so the UI
+    /// can surface a failure and keep the user signed in.
+    func deleteAccount() async throws {
+        // Server-side cascade (see supabase/migrations/004_account_deletion.sql).
+        try await supabase.rpc("delete_my_account").execute()
+
+        // The auth user is gone now — tear down services and drop the local session.
+        await onSignOut?()
+        try? await supabase.auth.signOut()
+        isAuthenticated = false
+        currentUser = nil
+    }
 }

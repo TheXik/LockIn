@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var showTerms = false
     @State private var editingName = false
     @State private var newName = ""
+    @State private var showDeleteSheet = false
 
     var body: some View {
         NavigationStack {
@@ -328,12 +329,42 @@ struct SettingsView: View {
                     Spacer()
                 }
             }
+
+            Rectangle()
+                .fill(Color.lockInHairline)
+                .frame(height: 1)
+
+            Button { showDeleteSheet = true } label: {
+                HStack(spacing: LKSpace.md) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.lockInDanger.opacity(0.14))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.lockInDanger)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Delete Account")
+                            .font(.lkBodyStrong)
+                            .foregroundColor(.lockInDanger)
+                        Text("Permanently erases you and your data")
+                            .font(.lkCaption)
+                            .foregroundColor(.lockInTextSecondary)
+                    }
+                    Spacer()
+                }
+            }
         }
         .lockInCard()
         .overlay(
             RoundedRectangle(cornerRadius: LKRadius.lg, style: .continuous)
                 .stroke(Color.lockInDanger.opacity(0.20), lineWidth: 1)
         )
+        .sheet(isPresented: $showDeleteSheet) {
+            DeleteAccountSheet().environmentObject(authService)
+        }
     }
 
     // MARK: - Legal
@@ -412,6 +443,108 @@ private struct ConditionalGlow: ViewModifier {
             content.lockInGlow(.lockInGlow, radius: 16, intensity: 0.55)
         } else {
             content
+        }
+    }
+}
+
+// MARK: - Delete Account
+
+/// Irreversible account deletion with type-to-confirm friction (App Store 5.1.1(v)).
+private struct DeleteAccountSheet: View {
+    @EnvironmentObject var authService: AuthService
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmText = ""
+    @State private var isDeleting = false
+    @State private var errorMessage: String?
+
+    private var canDelete: Bool {
+        confirmText.trimmingCharacters(in: .whitespaces).uppercased() == "DELETE"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: LKSpace.lg) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 34))
+                        .foregroundColor(.lockInDanger)
+
+                    Text("This can't be undone.")
+                        .font(.lkTitle)
+                        .foregroundColor(.lockInText)
+
+                    Text("Deleting your account permanently erases your profile, your pact memberships, your lock history, and your unlock requests. Pacts where you're the only member are dissolved; where others remain, they keep the pact.")
+                        .font(.lkBody)
+                        .foregroundColor(.lockInTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(alignment: .leading, spacing: LKSpace.sm) {
+                        Text("TYPE \"DELETE\" TO CONFIRM")
+                            .font(.lkMicro)
+                            .tracking(1.5)
+                            .foregroundColor(.lockInTextTertiary)
+
+                        TextField("DELETE", text: $confirmText)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .font(.lkBodyStrong)
+                            .foregroundColor(.lockInText)
+                            .padding(14)
+                            .background(Color.lockInSurfaceLight)
+                            .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
+                            .lockInHairlineStroke(LKRadius.md)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.lkCaption)
+                            .foregroundColor(.lockInDanger)
+                    }
+                }
+                .padding(20)
+            }
+            .lockInScreenBackground()
+            .navigationTitle("Delete Account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.lockInTextSecondary)
+                        .disabled(isDeleting)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button(role: .destructive) {
+                    Task { await performDelete() }
+                } label: {
+                    HStack(spacing: LKSpace.sm) {
+                        if isDeleting { ProgressView().tint(.white) }
+                        Text(isDeleting ? "Deleting…" : "Delete My Account")
+                            .font(.lkBodyStrong)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background((canDelete && !isDeleting) ? Color.lockInDanger : Color.lockInSurfaceHi)
+                    .foregroundColor((canDelete && !isDeleting) ? .white : .lockInTextTertiary)
+                    .clipShape(RoundedRectangle(cornerRadius: LKRadius.md, style: .continuous))
+                }
+                .disabled(!canDelete || isDeleting)
+                .padding(20)
+            }
+        }
+        .interactiveDismissDisabled(isDeleting)
+    }
+
+    private func performDelete() async {
+        isDeleting = true
+        errorMessage = nil
+        do {
+            try await authService.deleteAccount()
+            // Success: the app root flips to AuthView as isAuthenticated goes false.
+            dismiss()
+        } catch {
+            errorMessage = "Couldn't delete your account. Check your connection and try again."
+            isDeleting = false
         }
     }
 }

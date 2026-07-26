@@ -45,6 +45,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: LockIn/Info.plist
         CODE_SIGN_ENTITLEMENTS: LockIn/LockIn.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -75,6 +76,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.ShieldConfiguration
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: ShieldConfiguration/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldConfiguration/ShieldConfiguration.entitlements
     entitlements:
@@ -96,6 +98,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.ShieldAction
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: ShieldAction/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShieldAction/ShieldAction.entitlements
     entitlements:
@@ -117,6 +120,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukashellesch.lockin.DeviceActivityMonitor
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: DeviceActivityMonitor/Info.plist
         CODE_SIGN_ENTITLEMENTS: DeviceActivityMonitor/DeviceActivityMonitor.entitlements
     entitlements:

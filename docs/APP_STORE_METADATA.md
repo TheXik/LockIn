@@ -132,3 +132,29 @@ ACCOUNT DELETION: Settings - Danger Zone - Delete Account (type DELETE to confir
 - [ ] Submit for Review
 
 Already done: Individual enrollment (Team `Y2JC2VK9VP`), FamilyControls **Distribution entitlement Assigned**, age rating, category, `ITSAppUsesNonExemptEncryption = false` (in `LockIn/Info.plist`), account deletion (deployed to Supabase), `device_tokens` table (deployed).
+
+---
+
+## App Review demo pact (seeded in production Supabase, 2026-07-27)
+
+A solo Apple reviewer cannot test approve/deny — RLS forbids responding to your own
+request (`auth.uid() != requester_id`). So a demo pact is seeded with a pending request
+the reviewer can act on:
+
+| Object | Value |
+|---|---|
+| Demo user | `Alex` 🐻 · `11111111-1111-4111-8111-111111111111` |
+| Pact | `App Review Demo` · **invite code `APPREV`** |
+| Pending request | Alex → Instagram, "Just need to check one message, I swear" |
+
+Reviewer flow: sign in with Apple → Pacts → Join → `APPREV` → Requests → sees Alex's
+pending request → Approve or Deny. This is documented in the App Review notes.
+
+**Remove it after the app is approved:**
+```sql
+delete from public.unlock_requests where id = '44444444-4444-4444-8444-444444444444';
+delete from public.pact_members  where id = '33333333-3333-4333-8333-333333333333';
+delete from public.pacts         where id = '22222222-2222-4222-8222-222222222222';
+delete from public.profiles      where id = '11111111-1111-4111-8111-111111111111';
+delete from auth.users           where id = '11111111-1111-4111-8111-111111111111';
+```
